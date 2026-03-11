@@ -971,7 +971,6 @@ code { font-family:monospace; background:var(--bg2); padding:1px 4px; font-size:
 }
 
 /* ── Canvas room renderer ─────────────────────────────────────────── */
-.dorm-building { display:flex; flex-direction:column; gap:0; }
 
 .room-wrap {
   position: relative;
@@ -992,19 +991,16 @@ code { font-family:monospace; background:var(--bg2); padding:1px 4px; font-size:
   position: relative;
   z-index: 2;
 }
-.rs-num  { color: var(--accent); font-weight: 700; font-size: 10px; }
-.rs-name { color: var(--text1); flex: 1; font-weight: 600; letter-spacing: 0.05em; }
-.rs-occ  { color: var(--text3); font-size: 10px; }
+.rs-num  { color: #ccc; font-weight: 700; font-size: 10px; background: none; padding: 2px 6px; }
+.rs-name { color: #ddd; flex: 1; font-weight: 600; letter-spacing: 0.05em; font-size: 10px; }
+.rs-occ  { color: var(--text3); font-size: 10px; font-family: var(--font-vt); }
 .rs-tag  { color: var(--text3); font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em;
-           background: rgba(255,255,255,0.05); padding: 1px 5px; border-radius: 2px; }
+           background: rgba(255,255,255,0.05); padding: 1px 5px; border: none; }
 
 .room-canvas {
   display: block;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
-  width: 100%;
-  height: auto;
-  max-height: 320px;
 }
 
 .room-sep {
@@ -1022,9 +1018,11 @@ code { font-family:monospace; background:var(--bg2); padding:1px 4px; font-size:
   image-rendering: pixelated;
   image-rendering: crisp-edges;
   pointer-events: auto;
-  transition: transform 0.12s ease;
+  cursor: pointer;
+  transition: filter 0.12s ease;
+  transform-origin: bottom center;
 }
-.normie-sprite:hover { filter: brightness(1.3); }
-
-/* Make room canvas container relative for sprite positioning */
-.room-wrap { position: relative; }
+.normie-sprite:hover {
+  filter: brightness(1.3) drop-shadow(0 0 4px rgba(255,255,255,.35));
+  z-index: 30 !important;
+}

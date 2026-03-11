@@ -13,8 +13,8 @@ const ROOM_W = ROOM_TILES_W * TS   // 576px
 const ROOM_H = ROOM_TILES_H * TS   // 384px
 
 const WALL_COLOR    = '#2a2a2a'
-const FLOOR_COLORS  = { bedroom:'#3a3530', study:'#2e3028', gaming:'#1e1e28', kitchen:'#303030' }
-const ACCENT_COLORS = { bedroom:'#4a4540', study:'#3a4038', gaming:'#252535', kitchen:'#404040' }
+const FLOOR_COLORS  = { bedroom:'#3a3530', study:'#2e3028', gaming:'#1e1e28', kitchen:'#303030', chill:'#2e2a28', gym:'#282828', library:'#2a2820', music:'#28202a', art:'#2a2828' }
+const ACCENT_COLORS = { bedroom:'#4a4540', study:'#3a4038', gaming:'#252535', kitchen:'#404040', chill:'#3a3530', gym:'#333333', library:'#3a3828', music:'#35283a', art:'#383535' }
 const NORMIE_SCALE  = 2.5  // normie sprite display scale
 
 // ── Tileset ────────────────────────────────────────────────────────────────

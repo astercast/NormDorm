@@ -205,13 +205,13 @@ export class App {
     }
 
     this.normieMap = new Map(this.normies.map(n=>[n.id,n]))
-    this._renderDorm()
+    await this._renderDorm()
 
     if (offlineMinutes > 5) showOfflineModal(offlineMinutes, ()=>logEvent(`Welcome back — ${offlineMinutes}m elapsed.`))
     this._startLoops()
   }
 
-  _renderDorm() {
+  async _renderDorm() {
     const addr = this.address ? `${this.address.slice(0,6)}…${this.address.slice(-4)}` : 'DEMO'
 
     this.root.innerHTML = `
@@ -291,7 +291,7 @@ export class App {
     document.getElementById('btn-leave').onclick    = ()=>{ this._stopAll(); this._renderConnect() }
     document.getElementById('hiw-btn').onclick      = ()=>this._showHowItWorksInDorm()
 
-    const { el, sceneEls } = buildDorm(this.rooms)
+    const { el, sceneEls } = await buildDorm(this.rooms)
     this.sceneEls = sceneEls
     document.getElementById('dorm-building-wrap').appendChild(el)
 
@@ -324,7 +324,7 @@ export class App {
   _showHowItWorksInDorm() {
     this._stopAll()
     renderHowItWorks(this.root)
-    window.addEventListener('hiw-back', ()=>{ this._renderDorm(); this._startLoops() }, { once:true })
+    window.addEventListener('hiw-back', async ()=>{ await this._renderDorm(); this._startLoops() }, { once:true })
   }
 
   _onNormieClick(id) {
