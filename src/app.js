@@ -248,6 +248,7 @@ export class App {
                 <div class="combo-track"><div id="combo-bar" class="combo-bar"></div></div>
               </div>
               <div id="dorm-building-wrap"></div>
+              <div id="phaser-room-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:24px"></div>
             </div>
             <div class="dorm-sidebar">
               <div class="sb-section">
@@ -291,13 +292,28 @@ export class App {
     document.getElementById('btn-leave').onclick    = ()=>{ this._stopAll(); this._renderConnect() }
     document.getElementById('hiw-btn').onclick      = ()=>this._showHowItWorksInDorm()
 
-    const { el, sceneEls } = await buildDorm(this.rooms)
-    this.sceneEls = sceneEls
-    document.getElementById('dorm-building-wrap').appendChild(el)
-
-    for (const normie of this.normies) {
-      placeSprite(normie, this.sceneEls[normie.location] || this.sceneEls[this.rooms[0]?.id] || this.sceneEls['outdoor'])
-    }
+    // Render dorm rooms using Phaser
+    const roomGrid = document.getElementById('phaser-room-grid');
+    roomGrid.innerHTML = '';
+    // Dynamically import Phaser renderer
+    import('./phaser-renderer.js').then(({ RoomScene }) => {
+      this.rooms.forEach((room, idx) => {
+        const container = document.createElement('div');
+        container.className = 'phaser-room-container';
+        container.style.width = '256px';
+        container.style.height = '192px';
+        roomGrid.appendChild(container);
+        // Create Phaser game for each room
+        new RoomScene({
+          container,
+          room,
+          normies: this.normies,
+          tileMap: TILE_MAP,
+          roomLayouts: ROOM_LAYOUTS,
+          tilesetUrl: '/tileset.png',
+        });
+      });
+    });
 
     renderRoster(this.normies)
     renderShop(this.purchasedUpgrades, this.coins, id=>this._buyUpgrade(id))
