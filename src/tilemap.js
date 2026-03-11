@@ -1,0 +1,92 @@
+// All coords are [sx, sy, sw, sh] into tileset.png (Interiors_free_16x16.png)
+// Verified against tile_reference.png
+
+export const TILE_MAP = {
+  // ── BEDROOM ──────────────────────────────────────────────────────
+  bed_single_green:      [0,   0,   32,  80],
+  bed_single_white:      [0,   80,  32,  80],
+  bed_double_blue:       [80,  0,   80,  80],
+  bed_double_beige:      [128, 80,  80,  80],
+  bed_double_cyan:       [160, 0,   80,  80],
+  bed_single_cyan:       [160, 80,  64,  80],
+  nightstand:            [48,  48,  16,  32],
+  alarm_clock:           [240, 48,  16,  32],
+  // ── STUDY ────────────────────────────────────────────────────────
+  desk_study_brown:      [32,  496, 32,  32],
+  desk_study_dark:       [96,  496, 32,  32],
+  desk_with_monitor:     [32,  528, 48,  32],
+  globe:                 [160, 576, 16,  32],
+  chalkboard:            [128, 576, 48,  32],
+  school_desk_chair:     [32,  608, 32,  48],
+  whiteboard:            [128, 640, 48,  32],
+  // ── GAMING ───────────────────────────────────────────────────────
+  couch_brown_2seat:     [48,  208, 48,  32],
+  couch_brown_3seat:     [112, 208, 48,  32],
+  tv_small:              [48,  144, 32,  32],
+  tv_dark_bg:            [80,  128, 48,  32],
+  rug_red_large:         [64,  240, 80,  48],
+  rug_checkered:         [64,  256, 48,  32],
+  // ── KITCHEN ──────────────────────────────────────────────────────
+  kitchen_counter_h:     [32,  880, 80,  32],
+  fridge_2door:          [32,  720, 48,  48],
+  stove_oven:            [0,   752, 48,  32],
+  sink_kitchen:          [80,  880, 32,  32],
+  table_dining_square:   [80,  768, 48,  48],
+  chair_dining:          [0,   800, 32,  32],
+  // ── DECOR / SHARED ───────────────────────────────────────────────
+  window_curtains:       [32,  384, 48,  32],
+  window_red_frame:      [80,  384, 32,  32],
+  window_double:         [128, 384, 48,  32],
+  glass_door:            [0,   448, 48,  32],
+  plant_large_palm:      [80,  704, 32,  48],
+  plant_small_pot:       [0,   784, 16,  32],
+  lamp_red_table:        [176, 832, 32,  32],
+  lamp_floor_tall:       [160, 864, 16,  48],
+  rug_green:             [0,   672, 80,  32],
+  rug_tan:               [0,   688, 80,  32],
+  picture_frame:         [112, 416, 16,  32],
+}
+
+// Room furniture layouts — each entry is { sprite, x, y } in room-pixel coords
+// Room canvas is ROOM_W x ROOM_H pixels (before scale)
+// x/y = top-left of sprite placement
+
+export const ROOM_LAYOUTS = {
+  bedroom: [
+    { sprite: 'rug_tan',          x: 40,  y: 48  },
+    { sprite: 'bed_double_blue',  x: 8,   y: 8   },
+    { sprite: 'nightstand',       x: 96,  y: 24  },
+    { sprite: 'alarm_clock',      x: 96,  y: 8   },
+    { sprite: 'plant_small_pot',  x: 144, y: 8   },
+    { sprite: 'picture_frame',    x: 120, y: 8   },
+    { sprite: 'window_curtains',  x: 48,  y: 0   },
+  ],
+  study: [
+    { sprite: 'rug_green',        x: 32,  y: 48  },
+    { sprite: 'desk_with_monitor',x: 8,   y: 8   },
+    { sprite: 'desk_study_brown', x: 64,  y: 8   },
+    { sprite: 'school_desk_chair',x: 112, y: 16  },
+    { sprite: 'globe',            x: 144, y: 8   },
+    { sprite: 'chalkboard',       x: 48,  y: 0   },
+    { sprite: 'plant_small_pot',  x: 160, y: 48  },
+  ],
+  gaming: [
+    { sprite: 'rug_checkered',    x: 32,  y: 40  },
+    { sprite: 'tv_dark_bg',       x: 56,  y: 4   },
+    { sprite: 'couch_brown_3seat',x: 48,  y: 64  },
+    { sprite: 'couch_brown_2seat',x: 8,   y: 32  },
+    { sprite: 'tv_small',         x: 8,   y: 4   },
+    { sprite: 'plant_large_palm', x: 144, y: 16  },
+    { sprite: 'window_double',    x: 64,  y: 0   },
+  ],
+  kitchen: [
+    { sprite: 'kitchen_counter_h',x: 8,   y: 4   },
+    { sprite: 'stove_oven',       x: 96,  y: 4   },
+    { sprite: 'sink_kitchen',     x: 144, y: 4   },
+    { sprite: 'fridge_2door',     x: 0,   y: 4   },
+    { sprite: 'table_dining_square', x: 64, y: 56 },
+    { sprite: 'chair_dining',     x: 48,  y: 72  },
+    { sprite: 'chair_dining',     x: 112, y: 72  },
+    { sprite: 'plant_small_pot',  x: 160, y: 48  },
+  ],
+}
