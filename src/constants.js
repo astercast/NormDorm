@@ -60,7 +60,7 @@ export const OUTDOOR_TYPE = {
 }
 
 export function buildRoomList(normieCount) {
-  const roomCount = Math.ceil(Math.max(normieCount, 1) / 4)
+  const roomCount = Math.max(Math.ceil(Math.max(normieCount, 1) / 2), 3)
   const rooms = []
   for (let i = 0; i < roomCount; i++) {
     const type = ROOM_TYPES[i % ROOM_TYPES.length]

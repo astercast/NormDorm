@@ -16,7 +16,8 @@ const ROOM_H = ROOM_TILES_H * TS   // 224px
 const WALL_COLORS  = { bedroom:'#e8e2d8', study:'#e4dfd4', gaming:'#dde0e6', kitchen:'#ede8e0', chill:'#e6e0d6', gym:'#e0e4e2', library:'#e2ddd4', music:'#e4dee6', art:'#eae4dc' }
 const FLOOR_COLORS = { bedroom:'#f5f0e8', study:'#f0ece2', gaming:'#eaecf0', kitchen:'#f4f0e8', chill:'#f2eee4', gym:'#eef0ee', library:'#eeead0', music:'#f0ecf2', art:'#f4f0e6' }
 const ACCENT_COLORS= { bedroom:'#d8d0c4', study:'#d4cec0', gaming:'#c8ccd4', kitchen:'#dcd6cc', chill:'#d6d0c4', gym:'#d0d4d2', library:'#d4d0c0', music:'#d6d0d8', art:'#dcd6cc' }
-const NORMIE_SCALE = 1.0   // normie sprite display scale
+const NORMIE_SCALE = 1.5
+const SPRITE_W_PCT = (SPRITE_W * NORMIE_SCALE) / ROOM_W * 100
 
 // ── Tileset — load in full colour ──────────────────────────────────────────
 let _sheet = null
@@ -79,13 +80,16 @@ export async function buildDorm(rooms) {
       <span class="rs-occ" id="occ-${room.id}">0/${room.maxOcc}</span>`
     roomWrap.appendChild(strip)
 
+    const roomScene = document.createElement('div')
+    roomScene.className = 'room-scene'
+
     const canvas = document.createElement('canvas')
     canvas.width  = ROOM_W
     canvas.height = ROOM_H
     canvas.className = 'room-canvas'
     canvas.id = `canvas-${room.id}`
-    canvas.style.cssText = `width:100%;aspect-ratio:${ROOM_W}/${ROOM_H};image-rendering:pixelated;display:block;cursor:pointer`
-    roomWrap.appendChild(canvas)
+    roomScene.appendChild(canvas)
+    roomWrap.appendChild(roomScene)
 
     const ctx = canvas.getContext('2d')
     _drawRoom(ctx, room)
@@ -258,16 +262,27 @@ export function placeSprite(normie, sceneEl) {
   cvs.height = Math.round(SPRITE_H * NORMIE_SCALE)
   cvs.style.cssText = `position:absolute;cursor:pointer;image-rendering:pixelated;z-index:10`
 
-  const isOutdoor   = sceneEl.classList.contains('outdoor-wrap')
-  const container   = isOutdoor ? sceneEl.querySelector('.out-objects') || sceneEl : sceneEl
+  const isOutdoor = sceneEl.classList.contains('outdoor-wrap')
+  const container = isOutdoor
+    ? sceneEl.querySelector('.out-objects') || sceneEl
+    : sceneEl.querySelector('.room-scene') || sceneEl
 
-  const sceneW = isOutdoor ? 760 : ROOM_W
-  const startX = 30 + Math.random() * (sceneW - cvs.width - 60)
-  const startY = isOutdoor ? 20 + Math.random() * 30 : ROOM_H * 0.4 + Math.random() * (ROOM_H * 0.35)
-
-  cvs.style.left   = Math.round(startX) + 'px'
-  cvs.style.bottom = isOutdoor ? Math.round(startY) + 'px' : 'auto'
-  cvs.style.top    = isOutdoor ? 'auto' : Math.round(startY) + 'px'
+  let startX, startY
+  if (isOutdoor) {
+    startX = 30 + Math.random() * 660
+    startY = 15 + Math.random() * 40
+    cvs.style.left   = Math.round(startX) + 'px'
+    cvs.style.bottom = Math.round(startY) + 'px'
+    cvs.style.top    = 'auto'
+  } else {
+    startX = 5 + Math.random() * (85 - SPRITE_W_PCT)
+    startY = 28 + Math.random() * 45
+    cvs.style.left   = startX + '%'
+    cvs.style.top    = startY + '%'
+    cvs.style.bottom = 'auto'
+    cvs.style.width  = SPRITE_W_PCT + '%'
+    cvs.style.height = 'auto'
+  }
 
   const ss = {
     cvs, sceneEl,
@@ -289,7 +304,7 @@ export function placeSprite(normie, sceneEl) {
     document.dispatchEvent(new CustomEvent('normie-click', { detail: { id: normie.id } }))
   })
 
-  container.style.position = 'relative'
+  if (isOutdoor) container.style.position = 'relative'
   container.appendChild(cvs)
 }
 
@@ -313,8 +328,28 @@ export function setSpriteScene(normie, newSceneEl) {
 
   const container = ss.isOutdoor
     ? newSceneEl.querySelector('.out-objects') || newSceneEl
-    : newSceneEl
-  container.style.position = 'relative'
+    : newSceneEl.querySelector('.room-scene') || newSceneEl
+
+  if (ss.isOutdoor) {
+    ss.x = 30 + Math.random() * 660
+    ss.y = 15 + Math.random() * 40
+    ss.cvs.style.left   = Math.round(ss.x) + 'px'
+    ss.cvs.style.bottom = Math.round(ss.y) + 'px'
+    ss.cvs.style.top    = 'auto'
+    ss.cvs.style.width  = ''
+    ss.cvs.style.height = ''
+    container.style.position = 'relative'
+  } else {
+    ss.x = 5 + Math.random() * (85 - SPRITE_W_PCT)
+    ss.y = 28 + Math.random() * 45
+    ss.cvs.style.left   = ss.x + '%'
+    ss.cvs.style.top    = ss.y + '%'
+    ss.cvs.style.bottom = 'auto'
+    ss.cvs.style.width  = SPRITE_W_PCT + '%'
+    ss.cvs.style.height = 'auto'
+  }
+  ss.targetX = ss.x
+  ss.targetY = ss.y
   container.appendChild(ss.cvs)
 }
 
@@ -324,7 +359,6 @@ export function animateSprites(normieMap, nightAlpha, dt) {
     if (!normie) continue
 
     const pose  = ACTIVITY_META[normie.activity]?.pose || 'stand'
-    // Only sleeping/napping are truly still — all others get subtle movement
     const still = ['sleeping','napping'].includes(normie.activity)
 
     if (!still) {
@@ -332,34 +366,36 @@ export function animateSprites(normieMap, nightAlpha, dt) {
       ss._moveTimer -= dt
 
       if (ss._moveTimer <= 0) {
-        const sceneW = ss.isOutdoor ? 720 : ROOM_W
-        const sceneH = ss.isOutdoor ? 80  : ROOM_H * 0.35
-        ss.targetX = 20 + Math.random() * (sceneW - ss.cvs.width - 40)
-        ss.targetY = (ss.isOutdoor ? 10 : ROOM_H * 0.4) + Math.random() * sceneH
+        if (ss.isOutdoor) {
+          ss.targetX = 20 + Math.random() * 680
+          ss.targetY = 10 + Math.random() * 80
+        } else {
+          ss.targetX = 3 + Math.random() * (87 - SPRITE_W_PCT)
+          ss.targetY = 25 + Math.random() * 50
+        }
         ss._moveTimer = 3 + Math.random() * 4
       }
 
       const dx = ss.targetX - ss.x
       const dy = ss.targetY - ss.y
       const dist = Math.hypot(dx, dy)
-      const spd  = 30 * dt
+      const spd  = ss.isOutdoor ? 30 * dt : 12 * dt
 
-      if (dist > 2) {
+      if (dist > (ss.isOutdoor ? 2 : 0.5)) {
         ss.x += (dx / dist) * spd
         ss.y += (dy / dist) * spd
         ss.dir = Math.abs(dx) > Math.abs(dy) * 0.5 ? (dx < 0 ? 'left' : 'right') : (dy < 0 ? 'up' : 'down')
       }
 
-      ss.cvs.style.left = Math.round(ss.x) + 'px'
-      if (ss.isOutdoor) ss.cvs.style.bottom = Math.round(ss.y) + 'px'
-      else              ss.cvs.style.top    = Math.round(ss.y) + 'px'
-
-      const depthFactor = ss.isOutdoor ? 1 : 0.8 + 0.2 * (ss.y / (ROOM_H * 0.85))
-      ss.cvs.style.transform = `scale(${Math.max(0.8, Math.min(1.05, depthFactor)).toFixed(3)})`
-      ss.cvs.style.transformOrigin = 'bottom center'
+      if (ss.isOutdoor) {
+        ss.cvs.style.left   = Math.round(ss.x) + 'px'
+        ss.cvs.style.bottom = Math.round(ss.y) + 'px'
+      } else {
+        ss.cvs.style.left = ss.x + '%'
+        ss.cvs.style.top  = ss.y + '%'
+      }
       ss.cvs.style.zIndex = String(Math.floor(ss.y))
     } else {
-      ss.cvs.style.transform = 'scale(1)'
       ss.walkPhase = 0
     }
 
@@ -367,7 +403,8 @@ export function animateSprites(normieMap, nightAlpha, dt) {
 
     const now = performance.now()
     if (now - ss._lastDraw > 66) {
-      _redrawSprite(normie, ss, nightAlpha)
+      const spriteNight = ss.isOutdoor ? nightAlpha : nightAlpha * 0.15
+      _redrawSprite(normie, ss, spriteNight)
       ss._lastDraw = now
     }
   }
@@ -399,7 +436,7 @@ export function updateDayNight(gameMinute) {
   for (const [roomId, { canvas, ctx, room }] of sceneCanvases) {
     _drawRoom(ctx, room)
     if (night > 0) {
-      ctx.fillStyle = `rgba(15, 20, 45, ${(night * 0.25).toFixed(3)})`
+      ctx.fillStyle = `rgba(15, 20, 45, ${(night * 0.10).toFixed(3)})`
       ctx.fillRect(0, 0, canvas.width, canvas.height)
     }
   }

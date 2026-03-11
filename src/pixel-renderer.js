@@ -12,7 +12,8 @@ const procCache = new Map()
 // Simple luminance threshold: r,g,b all < 120 → dark pixel → keep black.
 // Anything brighter (light areas, bg, anti-alias fringe) → transparent.
 
-const DARK_MAX = 120
+const BG_R = 227, BG_G = 229, BG_B = 228
+const BG_TOLERANCE = 15
 
 export const SPRITE_W = 64
 export const SPRITE_H = 64
@@ -43,11 +44,11 @@ async function _process(img) {
   const idata = tc.getImageData(0, 0, PX, PX)
   const d = idata.data
 
-  // Threshold: dark pixels stay black and opaque; everything else → transparent
+  // Remove background — keep all non-background pixels in original colour
   for (let i = 0; i < d.length; i += 4) {
-    if (d[i] < DARK_MAX && d[i+1] < DARK_MAX && d[i+2] < DARK_MAX) {
-      d[i] = 0x48; d[i+1] = 0x49; d[i+2] = 0x4b; d[i+3] = 255
-    } else {
+    if (Math.abs(d[i] - BG_R) <= BG_TOLERANCE &&
+        Math.abs(d[i+1] - BG_G) <= BG_TOLERANCE &&
+        Math.abs(d[i+2] - BG_B) <= BG_TOLERANCE) {
       d[i+3] = 0
     }
   }
