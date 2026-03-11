@@ -14,10 +14,11 @@ const CANVAS_W = ROOM_W * TS
 const CANVAS_H = ROOM_H * TS
 
 export class RoomScene extends Phaser.Scene {
-  constructor(roomLayout, roomType) {
-    super({ key: `room-${roomType}` })
-    this.roomLayout = roomLayout
-    this.roomType = roomType
+  constructor(config) {
+    super({ key: `room-${config.roomType}` })
+    this.roomLayout = config.roomLayout
+    this.roomType = config.roomType
+    this.tileMap = config.tileMap
   }
 
   preload() {
@@ -36,35 +37,23 @@ export class RoomScene extends Phaser.Scene {
       this.add.rectangle(x*TS+TS/2, TS/2, TS, TS/2, 0xe8e2d8)
     }
 
-    // Draw furniture using tileset
-    const tileset = this.textures.get(TILESET_KEY).getSourceImage();
-    const ctx = this.sys.game.canvas.getContext('2d');
-    // TILE_MAP must be globally available
-    const TILE_MAP = window.TILE_MAP || {};
+    // Draw furniture using Phaser images
     this.roomLayout.forEach(item => {
-      const tile = TILE_MAP[item.sprite];
+      const tile = this.tileMap[item.sprite];
       if (!tile) return;
-      // tile: [sx, sy, sw, sh]
       const [sx, sy, sw, sh] = tile;
-      // Draw sprite from tileset
-      ctx.drawImage(
-        tileset,
-        sx, sy, sw, sh,
-        item.x, item.y, sw, sh
-      );
-      // Add shadow for depth
-      ctx.save();
-      ctx.globalAlpha = 0.18;
-      ctx.fillStyle = '#000';
-      ctx.fillRect(item.x+4, item.y+sh-8, sw-8, 8);
-      ctx.restore();
+      // Create image from tileset, crop to tile
+      const img = this.add.image(item.x + sw/2, item.y + sh/2, TILESET_KEY);
+      img.setCrop(sx, sy, sw, sh);
+      img.setDisplaySize(sw, sh);
+      img.setDepth(1);
+      // Add shadow
+      const shadow = this.add.rectangle(item.x + sw/2, item.y + sh, sw-8, 8, 0x000000, 0.18);
+      shadow.setDepth(0);
     });
     // Add decor: soft lighting overlay
-    ctx.save();
-    ctx.globalAlpha = 0.08;
-    ctx.fillStyle = '#ffe9b3';
-    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-    ctx.restore();
+    const overlay = this.add.rectangle(CANVAS_W/2, CANVAS_H/2, CANVAS_W, CANVAS_H, 0xffe9b3, 0.08);
+    overlay.setDepth(2);
   }
 }
 
