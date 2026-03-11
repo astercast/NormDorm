@@ -3,55 +3,36 @@ import { drawNormieSprite, SPRITE_W, SPRITE_H } from './pixel-renderer.js'
 import { TILE_MAP, ROOM_LAYOUTS } from './tilemap.js'
 
 // ── Constants ──────────────────────────────────────────────────────────────
-const TILE    = 16        // source tile size
-const SCALE   = 3         // display scale (16px → 48px)
-const TS      = TILE * SCALE  // 48px per tile on screen
+const TILE    = 16
+const SCALE   = 2         // tighter scale for 3-col layout
+const TS      = TILE * SCALE
 
-const ROOM_TILES_W = 12   // room width in tiles
-const ROOM_TILES_H = 8    // room height in tiles
-const ROOM_W = ROOM_TILES_W * TS   // 576px
-const ROOM_H = ROOM_TILES_H * TS   // 384px
+const ROOM_TILES_W = 10
+const ROOM_TILES_H = 7
+const ROOM_W = ROOM_TILES_W * TS   // 320px
+const ROOM_H = ROOM_TILES_H * TS   // 224px
 
-const WALL_COLOR    = '#2a2a2a'
-const FLOOR_COLORS  = { bedroom:'#3a3530', study:'#2e3028', gaming:'#1e1e28', kitchen:'#303030', chill:'#2e2a28', gym:'#282828', library:'#2a2820', music:'#28202a', art:'#2a2828' }
-const ACCENT_COLORS = { bedroom:'#4a4540', study:'#3a4038', gaming:'#252535', kitchen:'#404040', chill:'#3a3530', gym:'#333333', library:'#3a3828', music:'#35283a', art:'#383535' }
-const NORMIE_SCALE  = 2.5  // normie sprite display scale
+// Light, warm room palettes — always light, unaffected by dark mode
+const WALL_COLORS  = { bedroom:'#e8e2d8', study:'#e4dfd4', gaming:'#dde0e6', kitchen:'#ede8e0', chill:'#e6e0d6', gym:'#e0e4e2', library:'#e2ddd4', music:'#e4dee6', art:'#eae4dc' }
+const FLOOR_COLORS = { bedroom:'#f5f0e8', study:'#f0ece2', gaming:'#eaecf0', kitchen:'#f4f0e8', chill:'#f2eee4', gym:'#eef0ee', library:'#eeead0', music:'#f0ecf2', art:'#f4f0e6' }
+const ACCENT_COLORS= { bedroom:'#d8d0c4', study:'#d4cec0', gaming:'#c8ccd4', kitchen:'#dcd6cc', chill:'#d6d0c4', gym:'#d0d4d2', library:'#d4d0c0', music:'#d6d0d8', art:'#dcd6cc' }
+const NORMIE_SCALE = 1.0   // normie sprite display scale
 
-// ── Tileset ────────────────────────────────────────────────────────────────
+// ── Tileset — load in full colour ──────────────────────────────────────────
 let _sheet = null
-let _sheetMono = null  // grayscale processed version
 
 function _loadSheet() {
   return new Promise(resolve => {
-    if (_sheetMono) { resolve(_sheetMono); return }
+    if (_sheet) { resolve(_sheet); return }
     const img = new Image()
-    img.onload = () => {
-      // Process to monochrome once
-      const tmp = document.createElement('canvas')
-      tmp.width = img.naturalWidth
-      tmp.height = img.naturalHeight
-      const tc = tmp.getContext('2d', { willReadFrequently: true })
-      tc.drawImage(img, 0, 0)
-      const id = tc.getImageData(0, 0, tmp.width, tmp.height)
-      const d = id.data
-      for (let i = 0; i < d.length; i += 4) {
-        const g = Math.round(0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2])
-        // Boost contrast slightly
-        const boosted = Math.min(255, Math.round(g * 1.15))
-        d[i] = d[i+1] = d[i+2] = boosted
-      }
-      tc.putImageData(id, 0, 0)
-      _sheetMono = tmp
-      _sheet = img
-      resolve(_sheetMono)
-    }
+    img.onload = () => { _sheet = img; resolve(_sheet) }
     img.onerror = () => { console.warn('Tileset failed to load'); resolve(null) }
     img.src = '/tileset.png'
   })
 }
 
 function _drawSprite(ctx, name, dx, dy, alpha = 1) {
-  if (!_sheetMono) return
+  if (!_sheet) return
   const t = TILE_MAP[name]
   if (!t) return
   const [sx, sy, sw, sh] = t
@@ -60,24 +41,26 @@ function _drawSprite(ctx, name, dx, dy, alpha = 1) {
   const prev = ctx.globalAlpha
   ctx.globalAlpha = alpha
   ctx.imageSmoothingEnabled = false
-  ctx.drawImage(_sheetMono, sx, sy, sw, sh, dx, dy, dw, dh)
+  ctx.drawImage(_sheet, sx, sy, sw, sh, dx, dy, dw, dh)
   ctx.globalAlpha = prev
 }
 
 // ── Sprite state ───────────────────────────────────────────────────────────
-const spriteState = new Map()  // normieId → { cvs, sceneEl, x, targetX, y, targetY, dir, walkPhase, ... }
+const spriteState = new Map()
 
 // ── Scene elements map ─────────────────────────────────────────────────────
-// roomId → { canvas, ctx, wrap }
 const sceneCanvases = new Map()
 
-// ── Build dorm ─────────────────────────────────────────────────────────────
+// ── Build dorm (3-col grid + outdoor spanning full width) ──────────────────
 export async function buildDorm(rooms) {
   await _loadSheet()
   sceneCanvases.clear()
 
   const wrap = document.createElement('div')
   wrap.className = 'dorm-building'
+
+  const roomGrid = document.createElement('div')
+  roomGrid.className = 'room-grid'
 
   const sceneEls = {}
 
@@ -88,23 +71,20 @@ export async function buildDorm(rooms) {
     roomWrap.className = 'room-wrap'
     roomWrap.id = `roomwrap-${room.id}`
 
-    // Header strip
     const strip = document.createElement('div')
     strip.className = 'room-strip'
     strip.innerHTML = `
-      <span class="rs-num">${room.number}</span>
-      <span class="rs-name">${room.name}</span>
-      <span class="rs-occ" id="occ-${room.id}">0/${room.maxOcc}</span>
-      <span class="rs-tag">${room.typeName}</span>`
+      <span class="rs-icon">${_roomIcon(room.typeId)}</span>
+      <span class="rs-name">${room.typeName}</span>
+      <span class="rs-occ" id="occ-${room.id}">0/${room.maxOcc}</span>`
     roomWrap.appendChild(strip)
 
-    // Room canvas
     const canvas = document.createElement('canvas')
     canvas.width  = ROOM_W
     canvas.height = ROOM_H
     canvas.className = 'room-canvas'
     canvas.id = `canvas-${room.id}`
-    canvas.style.cssText = `width:${ROOM_W}px;height:${ROOM_H}px;image-rendering:pixelated;display:block;cursor:pointer`
+    canvas.style.cssText = `width:100%;aspect-ratio:${ROOM_W}/${ROOM_H};image-rendering:pixelated;display:block;cursor:pointer`
     roomWrap.appendChild(canvas)
 
     const ctx = canvas.getContext('2d')
@@ -112,11 +92,12 @@ export async function buildDorm(rooms) {
 
     sceneCanvases.set(room.id, { canvas, ctx, room })
     sceneEls[room.id] = roomWrap
-    wrap.appendChild(roomWrap)
-    wrap.appendChild(_makeSep())
+    roomGrid.appendChild(roomWrap)
   }
 
-  // Outdoor strip
+  wrap.appendChild(roomGrid)
+
+  // Outdoor spanning full width below the grid
   const outdoorRoom = rooms.find(r => r.typeId === 'outdoor')
   if (outdoorRoom) {
     const od = _buildOutdoorDOM(outdoorRoom)
@@ -127,78 +108,65 @@ export async function buildDorm(rooms) {
   return { el: wrap, sceneEls }
 }
 
-function _makeSep() {
-  const s = document.createElement('div')
-  s.className = 'room-sep'
-  return s
+function _roomIcon(typeId) {
+  const icons = { study:'📖', gaming:'🎮', chill:'☕', gym:'💪', library:'📚', music:'🎵', kitchen:'🍳', art:'🎨', bedroom:'🛏️' }
+  return icons[typeId] || '🏠'
 }
 
-// ── Draw a room onto its canvas ────────────────────────────────────────────
+// ── Draw a room onto its canvas — LIGHT palette ────────────────────────────
 function _drawRoom(ctx, room) {
   const theme = room.typeId
   ctx.imageSmoothingEnabled = false
 
-  // Floor fill
-  ctx.fillStyle = FLOOR_COLORS[theme] || '#2e2e2e'
+  // Light floor
+  ctx.fillStyle = FLOOR_COLORS[theme] || '#f0ece4'
   ctx.fillRect(0, 0, ROOM_W, ROOM_H)
 
-  // Floor tile pattern (subtle grid)
-  ctx.strokeStyle = ACCENT_COLORS[theme] || '#333'
-  ctx.lineWidth = 1
+  // Subtle floor grid
+  ctx.strokeStyle = ACCENT_COLORS[theme] || '#ddd'
+  ctx.lineWidth = 0.5
   for (let tx = 0; tx <= ROOM_TILES_W; tx++) {
-    ctx.beginPath()
-    ctx.moveTo(tx * TS, 0)
-    ctx.lineTo(tx * TS, ROOM_H)
-    ctx.stroke()
+    ctx.beginPath(); ctx.moveTo(tx * TS, TS * 2); ctx.lineTo(tx * TS, ROOM_H); ctx.stroke()
   }
-  for (let ty = 0; ty <= ROOM_TILES_H; ty++) {
-    ctx.beginPath()
-    ctx.moveTo(0, ty * TS)
-    ctx.lineTo(ROOM_W, ty * TS)
-    ctx.stroke()
+  for (let ty = 2; ty <= ROOM_TILES_H; ty++) {
+    ctx.beginPath(); ctx.moveTo(0, ty * TS); ctx.lineTo(ROOM_W, ty * TS); ctx.stroke()
   }
 
-  // Back wall
-  ctx.fillStyle = WALL_COLOR
-  ctx.fillRect(0, 0, ROOM_W, TS * 1.5)
+  // Back wall — lighter
+  ctx.fillStyle = WALL_COLORS[theme] || '#e8e4dc'
+  ctx.fillRect(0, 0, ROOM_W, TS * 2)
 
-  // Wall top border
-  ctx.fillStyle = '#111'
-  ctx.fillRect(0, 0, ROOM_W, 3)
+  // Wall bottom border (baseboard line)
+  ctx.fillStyle = ACCENT_COLORS[theme] || '#d0ccc0'
+  ctx.fillRect(0, TS * 2 - 2, ROOM_W, 2)
 
-  // Skirting board
-  ctx.fillStyle = '#1a1a1a'
-  ctx.fillRect(0, ROOM_H - 4, ROOM_W, 4)
+  // Top edge
+  ctx.fillStyle = '#d0ccc0'
+  ctx.fillRect(0, 0, ROOM_W, 1)
 
-  // Left accent strip
-  ctx.fillStyle = '#111'
-  ctx.fillRect(0, 0, 3, ROOM_H)
+  // Bottom skirting
+  ctx.fillStyle = ACCENT_COLORS[theme] || '#d0ccc0'
+  ctx.fillRect(0, ROOM_H - 2, ROOM_W, 2)
 
   // Draw furniture from layout
   const layout = ROOM_LAYOUTS[theme] || ROOM_LAYOUTS.bedroom
   for (const item of layout) {
     _drawSprite(ctx, item.sprite, item.x * SCALE, item.y * SCALE)
   }
-
-  // Room label on wall
-  ctx.font = `bold ${10 * SCALE / 3}px "IBM Plex Mono", monospace`
-  ctx.fillStyle = 'rgba(255,255,255,0.12)'
-  ctx.fillText(room.typeName.toUpperCase(), TS * 0.3, TS * 1.1)
 }
 
-// ── Outdoor DOM (simpler, CSS-based for now) ───────────────────────────────
+// ── Outdoor DOM ────────────────────────────────────────────────────────────
 function _buildOutdoorDOM(room) {
   const wrap = document.createElement('div')
   wrap.className = 'room-wrap outdoor-wrap'
   wrap.id = `roomwrap-outdoor`
 
   const strip = document.createElement('div')
-  strip.className = 'room-strip'
+  strip.className = 'room-strip outdoor-strip'
   strip.innerHTML = `
-    <span class="rs-num">Q</span>
-    <span class="rs-name">THE QUAD</span>
-    <span class="rs-occ" id="occ-outdoor">0 outside</span>
-    <span class="rs-tag">outdoor</span>`
+    <span class="rs-icon">🌳</span>
+    <span class="rs-name">The Quad</span>
+    <span class="rs-occ" id="occ-outdoor">0 outside</span>`
   wrap.appendChild(strip)
 
   const scene = document.createElement('div')
@@ -222,7 +190,6 @@ function _buildOutdoorDOM(room) {
   sun.className = 'out-sun'; sun.id = 'sun'
   sky.appendChild(sun)
 
-  // Skyline
   const skyline = document.createElement('div')
   skyline.className = 'bg-skyline'
   ;[55,80,45,70,60,35,90,50].forEach(h => {
@@ -291,14 +258,12 @@ export function placeSprite(normie, sceneEl) {
   cvs.height = Math.round(SPRITE_H * NORMIE_SCALE)
   cvs.style.cssText = `position:absolute;cursor:pointer;image-rendering:pixelated;z-index:10`
 
-  // Find the actual canvas element within the scene wrap
-  const roomCanvas = sceneEl.querySelector('.room-canvas') || sceneEl
   const isOutdoor   = sceneEl.classList.contains('outdoor-wrap')
   const container   = isOutdoor ? sceneEl.querySelector('.out-objects') || sceneEl : sceneEl
 
   const sceneW = isOutdoor ? 760 : ROOM_W
-  const startX = 60 + Math.random() * (sceneW - cvs.width - 80)
-  const startY = isOutdoor ? 20 + Math.random() * 30 : ROOM_H * 0.35 + Math.random() * (ROOM_H * 0.45)
+  const startX = 30 + Math.random() * (sceneW - cvs.width - 60)
+  const startY = isOutdoor ? 20 + Math.random() * 30 : ROOM_H * 0.4 + Math.random() * (ROOM_H * 0.35)
 
   cvs.style.left   = Math.round(startX) + 'px'
   cvs.style.bottom = isOutdoor ? Math.round(startY) + 'px' : 'auto'
@@ -359,7 +324,8 @@ export function animateSprites(normieMap, nightAlpha, dt) {
     if (!normie) continue
 
     const pose  = ACTIVITY_META[normie.activity]?.pose || 'stand'
-    const still = ['sleeping','eating','studying','gaming','reading','showering','napping','cooking','sketching','chatting','meditating'].includes(normie.activity)
+    // Only sleeping/napping are truly still — all others get subtle movement
+    const still = ['sleeping','napping'].includes(normie.activity)
 
     if (!still) {
       ss.walkPhase = (ss.walkPhase + dt * 3.2) % 1
@@ -367,16 +333,16 @@ export function animateSprites(normieMap, nightAlpha, dt) {
 
       if (ss._moveTimer <= 0) {
         const sceneW = ss.isOutdoor ? 720 : ROOM_W
-        const sceneH = ss.isOutdoor ? 80  : ROOM_H * 0.5
-        ss.targetX = 40 + Math.random() * (sceneW - ss.cvs.width - 60)
-        ss.targetY = (ss.isOutdoor ? 10 : ROOM_H * 0.35) + Math.random() * sceneH
-        ss._moveTimer = 2 + Math.random() * 3
+        const sceneH = ss.isOutdoor ? 80  : ROOM_H * 0.35
+        ss.targetX = 20 + Math.random() * (sceneW - ss.cvs.width - 40)
+        ss.targetY = (ss.isOutdoor ? 10 : ROOM_H * 0.4) + Math.random() * sceneH
+        ss._moveTimer = 3 + Math.random() * 4
       }
 
       const dx = ss.targetX - ss.x
       const dy = ss.targetY - ss.y
       const dist = Math.hypot(dx, dy)
-      const spd  = 45 * dt
+      const spd  = 30 * dt
 
       if (dist > 2) {
         ss.x += (dx / dist) * spd
@@ -388,9 +354,8 @@ export function animateSprites(normieMap, nightAlpha, dt) {
       if (ss.isOutdoor) ss.cvs.style.bottom = Math.round(ss.y) + 'px'
       else              ss.cvs.style.top    = Math.round(ss.y) + 'px'
 
-      // Depth sort: lower y = further back = smaller
-      const depthFactor = ss.isOutdoor ? 1 : 0.7 + 0.3 * (ss.y / (ROOM_H * 0.85))
-      ss.cvs.style.transform = `scale(${Math.max(0.7, Math.min(1.1, depthFactor)).toFixed(3)})`
+      const depthFactor = ss.isOutdoor ? 1 : 0.8 + 0.2 * (ss.y / (ROOM_H * 0.85))
+      ss.cvs.style.transform = `scale(${Math.max(0.8, Math.min(1.05, depthFactor)).toFixed(3)})`
       ss.cvs.style.transformOrigin = 'bottom center'
       ss.cvs.style.zIndex = String(Math.floor(ss.y))
     } else {
@@ -430,15 +395,12 @@ export function updateDayNight(gameMinute) {
   else if (hour < 6)     night = 1
   else if (hour < 8)     night = Math.max(1 - (hour - 6) / 2, 0)
 
-  // Tint room canvases
+  // Light tint on room canvases — very subtle at night
   for (const [roomId, { canvas, ctx, room }] of sceneCanvases) {
+    _drawRoom(ctx, room)
     if (night > 0) {
-      // Redraw room then overlay night tint
-      _drawRoom(ctx, room)
-      ctx.fillStyle = `rgba(5, 8, 30, ${(night * 0.55).toFixed(3)})`
+      ctx.fillStyle = `rgba(15, 20, 45, ${(night * 0.25).toFixed(3)})`
       ctx.fillRect(0, 0, canvas.width, canvas.height)
-    } else {
-      _drawRoom(ctx, room)
     }
   }
 
