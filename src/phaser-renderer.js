@@ -64,7 +64,7 @@ export function createRoomPhaserCanvas(roomLayout, roomType, parentEl) {
     height: CANVAS_H,
     backgroundColor: '#faf8f4',
     scale: { mode: Phaser.Scale.NONE },
-    scene: [new RoomScene(roomLayout, roomType)]
+    scene: [new RoomScene({ roomLayout, roomType, tileMap })]
   }
   const game = new Phaser.Game(config)
   parentEl.appendChild(game.canvas)

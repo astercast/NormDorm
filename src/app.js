@@ -296,22 +296,16 @@ export class App {
     const roomGrid = document.getElementById('phaser-room-grid');
     roomGrid.innerHTML = '';
     // Dynamically import Phaser renderer
-    import('./phaser-renderer.js').then(({ RoomScene }) => {
+    import('./phaser-renderer.js').then(({ createRoomPhaserCanvas }) => {
       this.rooms.forEach((room, idx) => {
         const container = document.createElement('div');
         container.className = 'phaser-room-container';
         container.style.width = '256px';
         container.style.height = '192px';
         roomGrid.appendChild(container);
-        // Create Phaser game for each room
-        new RoomScene({
-          container,
-          room,
-          normies: this.normies,
-          tileMap: TILE_MAP,
-          roomLayouts: ROOM_LAYOUTS,
-          tilesetUrl: '/tileset.png',
-        });
+        // Get layout for room type
+        const layout = ROOM_LAYOUTS[room.type] || [];
+        createRoomPhaserCanvas(layout, room.type, container, TILE_MAP);
       });
     });
 
