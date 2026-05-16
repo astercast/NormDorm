@@ -39,23 +39,14 @@ function _loadFrame(id, pose, frame) {
   if (frameCache.has(key)) return Promise.resolve(frameCache.get(key))
 
   return new Promise(resolve => {
-    const meta = metaCache.get(id) || DEFAULT_META
     const url  = pose === 'walk'
       ? `${FULLNORM}/normies/${id}/full.png?pose=walk&frame=${frame}`
       : `${FULLNORM}/normies/${id}/full.png?pose=${pose}`
 
     const img = new Image()
-    img.crossOrigin = 'anonymous'
-    img.onload = () => {
-      const cvs = document.createElement('canvas')
-      cvs.width  = meta.pixelWidth
-      cvs.height = meta.pixelHeight
-      const c = cvs.getContext('2d')
-      c.imageSmoothingEnabled = false
-      c.drawImage(img, 0, 0, meta.pixelWidth, meta.pixelHeight)
-      frameCache.set(key, cvs)
-      resolve(cvs)
-    }
+    // No crossOrigin — avoids CORS failures when the CDN doesn't send the header.
+    // The sprite canvas becomes tainted but we only ever write to it, never read pixels.
+    img.onload = () => { frameCache.set(key, img); resolve(img) }
     img.onerror = () => { frameCache.set(key, null); resolve(null) }
     img.src = url
   })
