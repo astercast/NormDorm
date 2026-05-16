@@ -28,7 +28,7 @@ function _loadSheet() {
     const img = new Image()
     img.onload = () => { _sheet = img; resolve(_sheet) }
     img.onerror = () => { console.warn('Tileset failed to load'); resolve(null) }
-    img.src = '/tileset.png'
+    img.src = '/tileset.jpg'
   })
 }
 
@@ -155,7 +155,7 @@ function _drawRoom(ctx, room) {
   // Draw furniture from layout
   const layout = ROOM_LAYOUTS[theme] || ROOM_LAYOUTS.bedroom
   for (const item of layout) {
-    _drawSprite(ctx, item.sprite, item.x * SCALE, item.y * SCALE)
+    _drawSprite(ctx, item.sprite, item.x, item.y)
   }
 }
 

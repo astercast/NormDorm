@@ -1,4 +1,3 @@
-import { ROOM_LAYOUTS, TILE_MAP } from './tilemap.js';
 import {
   DEMO_IDS, TICK_MS, GAME_MINS_PER_TICK,
   ACTIVITY_META, CHAT_LINES, EVENT_TEMPLATES, ALL_NEEDS,
@@ -249,7 +248,6 @@ export class App {
                 <div class="combo-track"><div id="combo-bar" class="combo-bar"></div></div>
               </div>
               <div id="dorm-building-wrap"></div>
-              <div id="phaser-room-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:24px"></div>
             </div>
             <div class="dorm-sidebar">
               <div class="sb-section">
@@ -293,23 +291,6 @@ export class App {
     document.getElementById('btn-leave').onclick    = ()=>{ this._stopAll(); this._renderConnect() }
     document.getElementById('hiw-btn').onclick      = ()=>this._showHowItWorksInDorm()
 
-    // Render dorm rooms using Phaser
-    const roomGrid = document.getElementById('phaser-room-grid');
-    roomGrid.innerHTML = '';
-    // Dynamically import Phaser renderer
-    import('./phaser-renderer.js').then(({ createRoomPhaserCanvas }) => {
-      this.rooms.forEach((room, idx) => {
-        const container = document.createElement('div');
-        container.className = 'phaser-room-container';
-        container.style.width = '256px';
-        container.style.height = '192px';
-        roomGrid.appendChild(container);
-        // Get layout for room type
-        const layout = ROOM_LAYOUTS[room.type] || [];
-        createRoomPhaserCanvas(layout, room.type, container, TILE_MAP);
-      });
-    });
-
     renderRoster(this.normies)
     renderShop(this.purchasedUpgrades, this.coins, id=>this._buyUpgrade(id))
     renderAchievements(this.earnedAchievements)
@@ -320,6 +301,17 @@ export class App {
     document.addEventListener('normie-click',  e=>this._onNormieClick(e.detail.id))
     document.addEventListener('normie-action', e=>this._onNormieAction(e.detail.action, e.detail.id))
     document.addEventListener('quick-action',  e=>this._onQuickAction(e.detail.action))
+
+    const buildWrap = document.getElementById('dorm-building-wrap')
+    const { el: dormEl, sceneEls } = await buildDorm(this.rooms)
+    dormEl.id = 'dorm-building'
+    buildWrap.appendChild(dormEl)
+    this.sceneEls = sceneEls
+
+    for (const normie of this.normies) {
+      const sceneEl = this.sceneEls[normie.location] || this.sceneEls[this.rooms[0]?.id] || Object.values(this.sceneEls)[0]
+      placeSprite(normie, sceneEl)
+    }
 
     logEvent('Welcome to NormDorm! Click your normies to earn coins.')
   }
