@@ -868,12 +868,16 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
   position: absolute; background: var(--panel); border: 1px solid var(--border);
   padding: 5px 10px; font-size: 11px; color: var(--text2); border-radius: var(--radius);
   max-width: 130px; pointer-events: none; text-align: center; line-height: 1.4;
-  box-shadow: var(--sh-md); animation: bubIn .18s cubic-bezier(.34,1.56,.64,1);
+  white-space: pre-wrap;
+  box-shadow: var(--sh-md);
+  /* Anchored by JS: left=sprite-center, top=above-head, then translated up-and-left to align. */
+  transform-origin: 50% 100%;
+  animation: bubIn .18s cubic-bezier(.34,1.56,.64,1);
 }
 .chat-bubble::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 5px solid transparent; border-top-color: var(--border) }
 .bubble-exit { animation: bubOut .3s ease-in forwards }
-@keyframes bubIn  { from{opacity:0;transform:translateX(-50%) scale(.8)} to{opacity:1;transform:translateX(-50%) scale(1)} }
-@keyframes bubOut { to{opacity:0;transform:translateX(-50%) translateY(-10px)} }
+@keyframes bubIn  { from{opacity:0;transform:translate(-50%,-100%) scale(.7)} to{opacity:1;transform:translate(-50%,-100%) scale(1)} }
+@keyframes bubOut { to{opacity:0;transform:translate(-50%,calc(-100% - 10px)) scale(.95)} }
 
 /* Coin pop — satisfying and big */
 .coin-pop {

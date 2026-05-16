@@ -65,26 +65,65 @@ export function updateComboMeter(combo, maxCombo) {
 
 // ── Chat bubbles ──────────────────────────────────────────────────────────────
 
-const _bubbles = new Map()
+const _bubbles = new Map()   // normieId → { el, raf, dismiss }
 
-export function showChatBubble(normieId, text, dur=3500) {
-  _bubbles.get(normieId)?.remove()
+// Sprite canvas is 60×120 (after NORMIE_SCALE). Head top is at native row ~8,
+// which is ~12px from canvas top. We anchor the bubble's TAIL TIP a few px
+// above the head, then let the bubble extend upward from there.
+const HEAD_TOP_PX = 12   // distance from sprite canvas top to head top
+const TAIL_GAP    = 4    // px of breathing room between head and tail tip
+const TAIL_SIZE   = 5    // matches .chat-bubble::after border-width
+
+export function showChatBubble(normieId, text, dur = 3500) {
+  // Clean up any existing bubble for this normie
+  const existing = _bubbles.get(normieId)
+  if (existing) existing.dismiss(true)
+
   const sprite = document.getElementById(`sprite-${normieId}`)
   const wrap   = document.getElementById('dorm-building-wrap')
-  if (!sprite||!wrap) return
+  if (!sprite || !wrap) return
 
   const b = document.createElement('div')
   b.className = 'chat-bubble'
   b.textContent = text
-  const sr = sprite.getBoundingClientRect()
-  const wr = wrap.getBoundingClientRect()
-  b.style.cssText = `position:absolute;left:${sr.left-wr.left+sr.width/2}px;top:${sr.top-wr.top-52}px;transform:translateX(-50%);z-index:60;pointer-events:none`
+  b.style.cssText = 'position:absolute;left:0;top:0;transform:translate(-50%,-100%);z-index:60;pointer-events:none'
   wrap.appendChild(b)
-  _bubbles.set(normieId, b)
-  setTimeout(()=>{
+
+  // Position function — runs every frame so the bubble tracks a moving sprite.
+  const position = () => {
+    if (!sprite.isConnected) { dismiss(true); return }
+    const sr = sprite.getBoundingClientRect()
+    const wr = wrap.getBoundingClientRect()
+    // X: horizontal center of the sprite canvas (head is centered in the bitmap)
+    const cx = sr.left - wr.left + sr.width / 2
+    // Y: bubble bottom (incl. tail) sits just above the head.
+    //    tailTipY = sprite.top + HEAD_TOP_PX − TAIL_GAP
+    //    bubbleBottom = tailTipY − TAIL_SIZE
+    const bubbleBottom = sr.top - wr.top + HEAD_TOP_PX - TAIL_GAP - TAIL_SIZE
+    b.style.left = cx + 'px'
+    b.style.top  = bubbleBottom + 'px'
+  }
+
+  let raf = 0
+  const loop = () => {
+    position()
+    raf = requestAnimationFrame(loop)
+  }
+  position()                             // initial frame so it doesn't flash at (0,0)
+  raf = requestAnimationFrame(loop)
+
+  let dismissed = false
+  const dismiss = (immediate = false) => {
+    if (dismissed) return
+    dismissed = true
+    cancelAnimationFrame(raf)
+    _bubbles.delete(normieId)
+    if (immediate) { b.remove(); return }
     b.classList.add('bubble-exit')
-    setTimeout(()=>{ b.remove(); _bubbles.delete(normieId) }, 300)
-  }, dur)
+    setTimeout(() => b.remove(), 300)
+  }
+  _bubbles.set(normieId, { el: b, raf, dismiss })
+  setTimeout(() => dismiss(false), dur)
 }
 
 // ── Log ───────────────────────────────────────────────────────────────────────
