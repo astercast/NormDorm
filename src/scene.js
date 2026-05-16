@@ -12,15 +12,15 @@ const ROOM_W = ROOM_TILES_W * TS   // 320px
 const ROOM_H = ROOM_TILES_H * TS   // 224px
 const WALL_H = TS * 2              // 64px
 
-const NORMIE_SCALE         = 2.2          // indoor room sprite scale
-const OUTDOOR_NORMIE_SCALE = 1.4          // smaller outdoors so sprites fit 180px scene
+const NORMIE_SCALE         = 1.9          // indoor room sprite scale
+const OUTDOOR_NORMIE_SCALE = 1.1          // outdoor — must fit inside 180px mobile scene
 const SPRITE_W_PCT  = (SPRITE_W * NORMIE_SCALE) / ROOM_W * 100
 
 // Outdoor scene layout — keep in sync with .out-ground in style.css
 const OUTDOOR_GROUND_PX = 56
-const OUT_FOOT_OFFSET   = (SPRITE_H - SPRITE_FEET_Y) * OUTDOOR_NORMIE_SCALE  // 4 * 1.4 = 5.6
+const OUT_FOOT_OFFSET   = (SPRITE_H - SPRITE_FEET_Y) * OUTDOOR_NORMIE_SCALE  // 4 * 1.1 = 4.4
 // Sprite `bottom` CSS so feet land exactly on the horizon line
-const OUTDOOR_FEET_Y    = OUTDOOR_GROUND_PX - OUT_FOOT_OFFSET   // 56 - 5.6 = ~50px
+const OUTDOOR_FEET_Y    = OUTDOOR_GROUND_PX - OUT_FOOT_OFFSET   // 56 - 4.4 = ~52px
 
 // Vanishing point (1-point perspective)
 const VP_X = ROOM_W / 2   // 160
@@ -1158,7 +1158,6 @@ export function placeSprite(normie, sceneEl) {
     document.dispatchEvent(new CustomEvent('normie-click', { detail: { id: normie.id } }))
   })
 
-  if (isOutdoor) container.style.position = 'relative'
   container.appendChild(cvs)
 }
 
