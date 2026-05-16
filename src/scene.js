@@ -1,5 +1,5 @@
 import { ACTIVITY_META } from './constants.js'
-import { drawNormieSprite, drawZzz, SPRITE_W, SPRITE_H } from './pixel-renderer.js'
+import { drawNormieSprite, drawZzz, SPRITE_W, SPRITE_H, SPRITE_FEET_Y } from './pixel-renderer.js'
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const TILE    = 16
@@ -14,6 +14,16 @@ const WALL_H = TS * 2              // 64px
 
 const NORMIE_SCALE  = 1.5
 const SPRITE_W_PCT  = (SPRITE_W * NORMIE_SCALE) / ROOM_W * 100
+
+// Outdoor scene layout — keep in sync with .out-ground in style.css
+const OUTDOOR_GROUND_PX = 64                                  // ground band height (= horizon line)
+// How far above the canvas BOTTOM the sprite's feet are drawn:
+//   canvas_h = SPRITE_H * NORMIE_SCALE
+//   feet_y_in_canvas = SPRITE_FEET_Y * NORMIE_SCALE
+//   foot_offset = canvas_h - feet_y_in_canvas
+const FOOT_OFFSET_PX    = (SPRITE_H - SPRITE_FEET_Y) * NORMIE_SCALE   // 4 * 1.5 = 6
+// Sprite `bottom` CSS so feet land exactly on the horizon line
+const OUTDOOR_FEET_Y    = OUTDOOR_GROUND_PX - FOOT_OFFSET_PX  // 64 - 6 = 58
 
 // Vanishing point (1-point perspective)
 const VP_X = ROOM_W / 2   // 160
@@ -967,6 +977,14 @@ function _roomIcon(typeId) {
 }
 
 // ── Outdoor DOM ────────────────────────────────────────────────────────────
+// ── The Quad: minimal, modern, with a single clean horizon line ─────────────
+//
+// Layout (heights):
+//   sky      → full
+//   horizon  → @ bottom: 64px  (the FLOOR top — sprites land here)
+//   ground   → bottom 64px tall
+//
+// Props are positioned via `left: %` so the scene reflows responsively.
 function _buildOutdoorDOM(room) {
   const wrap = document.createElement('div')
   wrap.className = 'room-wrap outdoor-wrap'
@@ -975,7 +993,6 @@ function _buildOutdoorDOM(room) {
   const strip = document.createElement('div')
   strip.className = 'room-strip outdoor-strip'
   strip.innerHTML = `
-    <span class="rs-icon">🌳</span>
     <span class="rs-name">The Quad</span>
     <span class="rs-occ" id="occ-outdoor">0 outside</span>`
   wrap.appendChild(strip)
@@ -984,76 +1001,91 @@ function _buildOutdoorDOM(room) {
   scene.className = 'outdoor-scene'
   scene.id = 'scene-outdoor'
 
+  // Sky
   const sky = document.createElement('div')
   sky.className = 'out-sky'
   sky.id = 'outdoor-sky'
-  for (let i = 0; i < 30; i++) {
-    const s = document.createElement('div')
-    s.className = `star ss${i%3}`
-    s.style.cssText = `left:${Math.random()*100}%;top:${3+Math.random()*55}%;animation-delay:${(Math.random()*4).toFixed(1)}s`
-    sky.appendChild(s)
-  }
-  const moon = document.createElement('div')
-  moon.className = 'moon'; moon.id = 'moon'; moon.textContent = '◑'
-  sky.appendChild(moon)
   const sun = document.createElement('div')
   sun.className = 'out-sun'; sun.id = 'sun'
   sky.appendChild(sun)
-
+  const moon = document.createElement('div')
+  moon.className = 'out-moon'; moon.id = 'moon'
+  sky.appendChild(moon)
+  // Subtle stars (only visible at night)
+  for (let i = 0; i < 24; i++) {
+    const s = document.createElement('div')
+    s.className = 'out-star'
+    s.style.cssText = `left:${Math.random()*100}%;top:${(2 + Math.random() * 50).toFixed(1)}%;animation-delay:${(Math.random()*4).toFixed(1)}s`
+    sky.appendChild(s)
+  }
+  // Distant silhouette (single layer, very low opacity)
   const skyline = document.createElement('div')
-  skyline.className = 'bg-skyline'
-  ;[55,80,45,70,60,35,90,50].forEach(h => {
+  skyline.className = 'out-skyline'
+  ;[42,68,38,80,52,30,72,46,60,34].forEach(h => {
     const b = document.createElement('div')
-    b.className = 'skyline-bldg'; b.style.height = h + 'px'
+    b.className = 'out-skyline-bldg'; b.style.height = h + 'px'
     skyline.appendChild(b)
   })
   sky.appendChild(skyline)
   scene.appendChild(sky)
 
+  // Ground — flat, single tone, with subtle path
   const ground = document.createElement('div')
   ground.className = 'out-ground'; ground.id = 'outdoor-ground'
   scene.appendChild(ground)
 
-  const path = document.createElement('div')
-  path.className = 'out-path'; scene.appendChild(path)
+  // Horizon line (visible thin separator at ground top)
+  const horizon = document.createElement('div')
+  horizon.className = 'out-horizon'
+  scene.appendChild(horizon)
 
+  // Objects layer — small, well-spaced, percentage-positioned
   const objs = document.createElement('div')
   objs.className = 'out-objects'; scene.appendChild(objs)
   ;[
-    _mkOutTree(28, 'oak'), _mkOutTree(195, 'pine'),
-    _mkOutTree(500, 'oak'), _mkOutTree(658, 'pine'),
-    _mkOutBench(128), _mkOutBench(402),
-    _mkOutLamp(305), _mkFountain(450),
+    _mkOutTree(6,  'oak'),
+    _mkOutTree(28, 'pine'),
+    _mkOutBench(46),
+    _mkOutLamp(63),
+    _mkOutTree(78, 'oak'),
+    _mkOutBench(93),
   ].forEach(el => objs.appendChild(el))
 
   wrap.appendChild(scene)
   return wrap
 }
 
-function _mkOutTree(x, type) {
+function _mkOutTree(xPct, type) {
   const t = document.createElement('div')
-  t.className = `out-tree ot-${type}`; t.style.left = x + 'px'
-  if (type === 'oak') t.innerHTML = `<div class="oak-canopy"><div class="oak-hi"></div></div><div class="oak-trunk"></div>`
-  else t.innerHTML = `<div class="pine-t1"></div><div class="pine-t2"></div><div class="pine-t3"></div><div class="pine-tr"></div>`
+  t.className = `out-tree ot-${type}`; t.style.left = xPct + '%'
+  if (type === 'oak') {
+    t.innerHTML = `
+      <div class="oak-canopy"></div>
+      <div class="oak-trunk"></div>`
+  } else {
+    t.innerHTML = `
+      <div class="pine-l1"></div>
+      <div class="pine-l2"></div>
+      <div class="pine-l3"></div>
+      <div class="pine-trunk"></div>`
+  }
   return t
 }
-function _mkOutBench(x) {
+function _mkOutBench(xPct) {
   const b = document.createElement('div')
-  b.className = 'out-bench'; b.style.left = x + 'px'
-  b.innerHTML = `<div class="ob-back"><div class="obs"></div><div class="obs"></div></div><div class="ob-seat"><div class="obs"></div></div><div class="ob-legs"><div></div><div></div></div>`
+  b.className = 'out-bench'; b.style.left = xPct + '%'
+  b.innerHTML = `
+    <div class="ob-seat"></div>
+    <div class="ob-legs"><span></span><span></span></div>`
   return b
 }
-function _mkOutLamp(x) {
+function _mkOutLamp(xPct) {
   const l = document.createElement('div')
-  l.className = 'out-lamp'; l.style.left = x + 'px'
-  l.innerHTML = `<div class="ol-head"><div class="ol-bulb"></div></div><div class="ol-pole"></div><div class="ol-base"></div>`
+  l.className = 'out-lamp'; l.style.left = xPct + '%'
+  l.innerHTML = `
+    <div class="ol-head"></div>
+    <div class="ol-pole"></div>`
   return l
-}
-function _mkFountain(x) {
-  const f = document.createElement('div')
-  f.className = 'out-fountain'; f.style.left = x + 'px'
-  f.innerHTML = `<div class="fo-rim"><div class="fo-water"><div class="fo-ripple"></div></div></div><div class="fo-center"></div>`
-  return f
 }
 
 // ── Sprite system ──────────────────────────────────────────────────────────
@@ -1075,10 +1107,11 @@ export function placeSprite(normie, sceneEl) {
 
   let startX, startY
   if (isOutdoor) {
-    startX = 30 + Math.random() * 660
-    startY = 54 + Math.random() * 10   // place feet near ground surface (~60px)
-    cvs.style.left   = Math.round(startX) + 'px'
-    cvs.style.bottom = Math.round(startY) + 'px'
+    // X is a percentage of scene width — keeps things responsive
+    startX = 6 + Math.random() * 88
+    startY = OUTDOOR_FEET_Y
+    cvs.style.left   = startX.toFixed(1) + '%'
+    cvs.style.bottom = startY + 'px'
     cvs.style.top    = 'auto'
   } else {
     startX = 4 + Math.random() * (88 - SPRITE_W_PCT)
@@ -1151,13 +1184,13 @@ export function setSpriteScene(normie, newSceneEl) {
     : newSceneEl.querySelector('.room-scene') || newSceneEl
 
   if (ss.isOutdoor) {
-    // Enter from left or right edge of outdoor area
-    ss.x = Math.random() < 0.5 ? -20 : 740
-    ss.y = 56
-    ss.targetX = 60 + Math.random() * 580
-    ss.targetY = 54 + Math.random() * 12
-    ss.cvs.style.left   = Math.round(ss.x) + 'px'
-    ss.cvs.style.bottom = Math.round(ss.y) + 'px'
+    // Enter from left or right edge (percentages of scene width)
+    ss.x = Math.random() < 0.5 ? -8 : 105
+    ss.y = OUTDOOR_FEET_Y
+    ss.targetX = 10 + Math.random() * 80
+    ss.targetY = OUTDOOR_FEET_Y
+    ss.cvs.style.left   = ss.x.toFixed(1) + '%'
+    ss.cvs.style.bottom = ss.y + 'px'
     ss.cvs.style.top    = 'auto'
     ss.cvs.style.width  = ''
     ss.cvs.style.height = ''
@@ -1201,8 +1234,8 @@ export function animateSprites(normieMap, nightAlpha, dt) {
         ss.walkPhase = (ss.walkPhase + dt * 3.2) % 1
         if (ss._moveTimer <= 0) {
           if (ss.isOutdoor) {
-            ss.targetX = 20  + Math.random() * 680
-            ss.targetY = 52  + Math.random() * 14  // stay on ground level
+            ss.targetX = 4   + Math.random() * 92         // percent
+            ss.targetY = OUTDOOR_FEET_Y                   // always on horizon
           } else {
             ss.targetX = 4   + Math.random() * (88 - SPRITE_W_PCT)
             ss.targetY = 3   + Math.random() * 10
@@ -1210,16 +1243,15 @@ export function animateSprites(normieMap, nightAlpha, dt) {
           ss._moveTimer = 3 + Math.random() * 4
         }
       } else if (!ss.isOutdoor) {
-        // Activity spot: keep re-targeting the spot each frame (smooth drift back if pushed)
         if (!ss._atSpot) {
           const spot = _getSpot(normie, ss)
           if (spot) { ss.targetX = spot.x; ss.targetY = spot.y }
         }
       } else {
-        // Outdoor non-walk (meditating, reading outside, etc.): occasional slow re-position
+        // Outdoor non-walk (meditating, reading, etc.): occasional re-position along horizon
         if (ss._moveTimer <= 0) {
-          ss.targetX = 60  + Math.random() * 580
-          ss.targetY = 15  + Math.random() * 40
+          ss.targetX = 6   + Math.random() * 88
+          ss.targetY = OUTDOOR_FEET_Y
           ss._moveTimer = 10 + Math.random() * 15
         }
       }
@@ -1250,7 +1282,7 @@ export function animateSprites(normieMap, nightAlpha, dt) {
 
     // ── CSS position ────────────────────────────────────────────────────────
     if (ss.isOutdoor) {
-      ss.cvs.style.left   = Math.round(ss.x) + 'px'
+      ss.cvs.style.left   = ss.x.toFixed(2) + '%'
       ss.cvs.style.bottom = Math.round(ss.y) + 'px'
     } else {
       ss.cvs.style.left   = ss.x.toFixed(2) + '%'
@@ -1318,7 +1350,6 @@ export function updateDayNight(gameMinute) {
   if (sun)    sun.style.opacity   = Math.max(0, 1 - night * 2).toFixed(2)
   if (moon)   moon.style.opacity  = night > 0.5 ? ((night - 0.5) * 2).toFixed(2) : '0'
   if (ground) ground.dataset.time = night > 0.5 ? 'night' : 'day'
-  document.querySelectorAll('.star').forEach(s => s.style.opacity = night > 0.6 ? '1' : '0')
 
   return night
 }

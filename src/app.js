@@ -89,27 +89,81 @@ export class App {
   // ── Homepage ──────────────────────────────────────────────────────────────
   _renderConnect() {
     if (this._glyphRaf) { cancelAnimationFrame(this._glyphRaf); this._glyphRaf = null }
+
+    // Pick a stable rotating set of demo Normies for the hero
+    const HERO_IDS = [42, 627, 1337, 888, 3000, 1, 250, 7777]
+    const heroSet  = []
+    const usedIdx  = new Set()
+    while (heroSet.length < 4) {
+      const idx = Math.floor(Math.random() * HERO_IDS.length)
+      if (usedIdx.has(idx)) continue
+      usedIdx.add(idx); heroSet.push(HERO_IDS[idx])
+    }
+
     this.root.innerHTML = `
       <div class="connect-page">
-        <div class="connect-brand">
-          <div class="connect-logo">NORMDORM</div>
-          <div class="connect-tagline">pixel dorm life simulator</div>
-        </div>
 
-        <canvas id="glyph-canvas" class="connect-glyph" width="320" height="160"></canvas>
+        <header class="hp-nav">
+          <div class="hp-mark">NORMDORM</div>
+          <div class="hp-meta">v2 · pixel life sim</div>
+        </header>
 
-        <div class="connect-lookup">
-          <div class="lookup-row">
-            <input
-              class="addr-input" id="addr-input" type="text"
-              placeholder="ethereum address  0x..." autocomplete="off" spellcheck="false">
-            <button class="btn btn-primary btn-load" id="btn-load">LOAD</button>
+        <main class="hp-hero">
+          <div class="hp-copy">
+            <h1 class="hp-title">A living dorm<br/>for your Normies.</h1>
+            <p class="hp-sub">
+              Drop in an Ethereum address. Your Normies move in,
+              keep each other company, and earn while you're away.
+            </p>
+
+            <div class="hp-lookup">
+              <input
+                class="hp-input" id="addr-input" type="text"
+                placeholder="0x…" autocomplete="off" spellcheck="false">
+              <button class="hp-btn-primary" id="btn-load">Enter dorm</button>
+            </div>
+            <button class="hp-btn-ghost" id="btn-demo">or try the demo →</button>
+
+            <div class="hp-trust">
+              <span class="hp-dot"></span>
+              read-only · no wallet connection · no transactions
+            </div>
           </div>
-          <div class="lookup-divider">— or —</div>
-          <button class="btn btn-lg btn-outline" id="btn-demo">DEMO MODE</button>
-        </div>
 
-        <div class="connect-footer">no wallet · read-only · no transactions</div>
+          <div class="hp-stage">
+            <div class="hp-room" id="hp-room">
+              <div class="hp-window"></div>
+              <div class="hp-shelf">
+                <span></span><span></span><span></span><span></span><span></span>
+              </div>
+              <div class="hp-desk"></div>
+              <div class="hp-lamp">
+                <span class="hp-lamp-shade"></span>
+                <span class="hp-lamp-pole"></span>
+              </div>
+              <div class="hp-bed"></div>
+              <div class="hp-floor"></div>
+
+              <div class="hp-normies">
+                ${heroSet.map((id, i) => `
+                  <div class="hp-normie hp-pos-${i}" style="animation-delay:${i * 0.25}s" data-id="${id}">
+                    <div class="hp-normie-slot"></div>
+                    <div class="hp-shadow"></div>
+                  </div>`).join('')}
+              </div>
+            </div>
+
+            <div class="hp-stage-caption">live preview · 4 of 10,000</div>
+          </div>
+        </main>
+
+        <footer class="hp-footer">
+          <div class="hp-footer-row">
+            <a href="https://normies.art" target="_blank" rel="noopener" class="hp-link">normies.art ↗</a>
+            <span class="hp-sep">·</span>
+            <a href="https://github.com/astercast/NormDorm" target="_blank" rel="noopener" class="hp-link">github ↗</a>
+          </div>
+        </footer>
       </div>
       <div id="notif-stack" class="notif-stack"></div>`
 
@@ -119,102 +173,57 @@ export class App {
     const _submit = () => {
       const val = input.value.trim()
       if (!val) {
-        input.style.borderColor = 'var(--accent)'
+        input.classList.add('hp-input-err')
         notify('Enter an Ethereum address (0x…)', 'warn')
         input.focus(); return
       }
       if (!/^0x[0-9a-fA-F]{40}$/i.test(val)) {
-        input.style.borderColor = '#c05050'
+        input.classList.add('hp-input-err')
         notify('Address must start with 0x and be 42 characters', 'warn')
         input.focus(); return
       }
-      input.style.borderColor = ''
+      input.classList.remove('hp-input-err')
       btnLoad.disabled = true
-      btnLoad.textContent = 'LOADING…'
+      btnLoad.textContent = 'Loading…'
       this._handleLookup(val)
     }
 
     btnLoad.onclick = _submit
     input.onkeydown = e => { if (e.key === 'Enter') _submit() }
-    input.oninput   = () => { input.style.borderColor = '' }
+    input.oninput   = () => input.classList.remove('hp-input-err')
     document.getElementById('btn-demo').onclick = () => this._handleDemo()
 
-    this._startGlyphAnimation()
+    // Asynchronously load Normie SVGs, strip their backgrounds, inject inline.
+    // Falls back to the raw <img> on failure so the hero is never empty.
+    this._loadHeroNormies(heroSet)
   }
 
-  _startGlyphAnimation() {
-    const cvs = document.getElementById('glyph-canvas')
-    if (!cvs) return
-    const ctx = cvs.getContext('2d')
-    const W = cvs.width, H = cvs.height
-    let t = 0
-
-    const draw = () => {
-      if (!document.getElementById('glyph-canvas')) return
-      ctx.clearRect(0, 0, W, H)
-
-      // Mini monochrome room
-      ctx.fillStyle = '#d0d0d0'
-      ctx.fillRect(0, 0, W, H * 0.38)         // wall
-      ctx.fillStyle = '#ebebeb'
-      ctx.fillRect(0, H * 0.38, W, H * 0.62)  // floor
-      ctx.fillStyle = '#aaaaaa'
-      ctx.fillRect(0, H * 0.38 - 2, W, 2)     // baseboard
-
-      // Window
-      ctx.fillStyle = '#b8b8b8'
-      ctx.fillRect(W * 0.36, H * 0.05, W * 0.28, H * 0.26)
-      ctx.strokeStyle = '#1a1a1a'; ctx.lineWidth = 2
-      ctx.strokeRect(W * 0.36, H * 0.05, W * 0.28, H * 0.26)
-      ctx.strokeStyle = '#888'; ctx.lineWidth = 1
-      ctx.beginPath()
-      ctx.moveTo(W * 0.50, H * 0.05); ctx.lineTo(W * 0.50, H * 0.31)
-      ctx.moveTo(W * 0.36, H * 0.18); ctx.lineTo(W * 0.64, H * 0.18)
-      ctx.stroke()
-
-      // Desk (left)
-      ctx.fillStyle = '#1a1a1a'
-      ctx.fillRect(W * 0.04, H * 0.38, W * 0.26, H * 0.06)
-      ctx.fillRect(W * 0.04, H * 0.44, W * 0.03, H * 0.10)
-      ctx.fillRect(W * 0.27, H * 0.44, W * 0.03, H * 0.10)
-
-      // Shelf (right)
-      ctx.fillStyle = '#1a1a1a'
-      ctx.fillRect(W * 0.70, H * 0.22, W * 0.26, H * 0.04)
-      ctx.fillRect(W * 0.70, H * 0.30, W * 0.26, H * 0.04)
-      // Books on shelf
-      const bookColors = ['#444','#666','#555','#777','#333']
-      for (let i = 0; i < 5; i++) {
-        ctx.fillStyle = bookColors[i]
-        ctx.fillRect(W * 0.71 + i * W * 0.046, H * 0.14, W * 0.038, H * 0.08)
+  async _loadHeroNormies(ids) {
+    for (let i = 0; i < ids.length; i++) {
+      const id   = ids[i]
+      const slot = document.querySelector(`.hp-normie[data-id="${id}"] .hp-normie-slot`)
+      if (!slot) continue
+      try {
+        const r = await fetch(`https://api.normies.art/normie/${id}/image.svg`, {
+          signal: AbortSignal.timeout(7000),
+        })
+        if (!r.ok) throw new Error('http ' + r.status)
+        let svg = await r.text()
+        // Strip the canonical background rect (always the first <rect> in the SVG)
+        svg = svg.replace(
+          /<rect\s+width="40"\s+height="40"\s+fill="#e3e5e4"\s*\/>/i,
+          ''
+        )
+        // Make the inner SVG sized to 100% so it fills the slot
+        svg = svg.replace(/width="1000"\s+height="1000"/, 'width="100%" height="100%"')
+        slot.innerHTML = svg
+      } catch {
+        // Fallback: just embed the raw image (will show the bg rect, but visible)
+        slot.innerHTML = `<img src="https://api.normies.art/normie/${id}/image.svg" alt="" draggable="false" />`
       }
-
-      // Walking normie silhouette
-      const phase = Math.floor(t * 0.06) % 4
-      const bob   = [0, -1.5, 0, 1.5][phase]
-      const nx    = W * 0.15 + (t % (W * 0.65))
-
-      ctx.fillStyle = '#0f0f0f'
-      const s = 5
-      ctx.fillRect(nx,       H * 0.40 + bob,       s * 2.2, s * 2.0)  // head
-      ctx.fillRect(nx - s * 0.5, H * 0.52 + bob,   s * 3.2, s * 2.5)  // body
-      // legs
-      if (phase === 0 || phase === 2) {
-        ctx.fillRect(nx,       H * 0.77, s * 1.2, s * 2.5)
-        ctx.fillRect(nx + s * 2, H * 0.77, s * 1.2, s * 2.5)
-      } else if (phase === 1) {
-        ctx.fillRect(nx - s * 0.4, H * 0.75, s * 1.2, s * 2.5)
-        ctx.fillRect(nx + s * 2.4, H * 0.79, s * 1.2, s * 2.5)
-      } else {
-        ctx.fillRect(nx + s * 0.4, H * 0.79, s * 1.2, s * 2.5)
-        ctx.fillRect(nx + s * 1.6, H * 0.75, s * 1.2, s * 2.5)
-      }
-
-      t++
-      this._glyphRaf = requestAnimationFrame(draw)
     }
-    draw()
   }
+
 
   // ── Address lookup ────────────────────────────────────────────────────────
   async _handleLookup(raw) {

@@ -7,13 +7,15 @@ const frameCache = new Map()   // `${id}:${pose}:${frame}` → HTMLImageElement 
 const DEFAULT_META = {
   pixelWidth:      40,
   pixelHeight:     80,
-  anchor:          { x: 20, y: 74 },
+  anchor:          { x: 20, y: 76 },   // feet centerline in native coords
   posesAvailable:  ['stand', 'walk', 'sit', 'sleep'],
   walkFrames:      4,
 }
 
 export const SPRITE_W = 40
 export const SPRITE_H = 80
+// Feet baseline in native coords. Used by scene.js to position sprite Y on the floor.
+export const SPRITE_FEET_Y = 76
 
 // ── Preload: fetch meta + eager frames ─────────────────────────────────────
 export async function preloadNormieImage(id) {
@@ -34,20 +36,59 @@ export async function preloadNormieImage(id) {
 }
 
 // ── Per-frame image loader ─────────────────────────────────────────────────
+// Loads the API PNG, then chromakeys the light-gray background to transparent
+// via an offscreen canvas. Result is cached as a canvas (drawImage-compatible).
+// If CORS or the image fail, cache `null` and let the caller fall back to procedural.
 function _loadFrame(id, pose, frame) {
   const key = `${id}:${pose}:${frame}`
   if (frameCache.has(key)) return Promise.resolve(frameCache.get(key))
 
+  const url = pose === 'walk'
+    ? `${FULLNORM}/normies/${id}/full.png?pose=walk&frame=${frame}`
+    : `${FULLNORM}/normies/${id}/full.png?pose=${pose}`
+
   return new Promise(resolve => {
-    const url = pose === 'walk'
-      ? `${FULLNORM}/normies/${id}/full.png?pose=walk&frame=${frame}`
-      : `${FULLNORM}/normies/${id}/full.png?pose=${pose}`
     const img = new Image()
-    // No crossOrigin — canvas will be tainted but we only write, never read
-    img.onload  = () => { frameCache.set(key, img);   resolve(img)  }
-    img.onerror = () => { frameCache.set(key, null);  resolve(null) }
+    img.crossOrigin = 'anonymous'
+    img.onload  = () => {
+      try {
+        const canvas = _chromaKey(img)
+        frameCache.set(key, canvas)
+        resolve(canvas)
+      } catch {
+        // Canvas tainted (CORS failure) — fall through to procedural
+        frameCache.set(key, null)
+        resolve(null)
+      }
+    }
+    img.onerror = () => { frameCache.set(key, null); resolve(null) }
     img.src = url
   })
+}
+
+// ── Background-removal: Normies use #e3e5e4 as the canonical light pixel. ──
+// Any pixel where R,G,B are all >= 220 AND within 25 of each other → transparent.
+// This preserves white-ish hat trim and shirt highlights (those use exact 255s
+// or pure tints) while killing the background.
+function _chromaKey(img) {
+  const w = img.naturalWidth  || img.width
+  const h = img.naturalHeight || img.height
+  const c = document.createElement('canvas')
+  c.width = w; c.height = h
+  const ctx = c.getContext('2d', { willReadFrequently: true })
+  ctx.imageSmoothingEnabled = false
+  ctx.drawImage(img, 0, 0)
+  const data = ctx.getImageData(0, 0, w, h)
+  const px   = data.data
+  for (let i = 0; i < px.length; i += 4) {
+    const r = px[i], g = px[i+1], b = px[i+2]
+    // Light gray (the canonical Normies background) + near-white pixels
+    const isLight = r >= 220 && g >= 220 && b >= 220
+                  && Math.abs(r - g) < 12 && Math.abs(g - b) < 12 && Math.abs(r - b) < 12
+    if (isLight) px[i+3] = 0
+  }
+  ctx.putImageData(data, 0, 0)
+  return c
 }
 
 function _kickWalkFrames(id) {
@@ -134,53 +175,59 @@ function _proceduralNormie(ctx, id, pose, walkPhase) {
     rAs  = [0,-3,0, 3][p]   // right arm swing
   }
 
-  // Layout
+  // Layout — feet land at row ~76 to match SPRITE_FEET_Y / API anchor
   const HX = Math.round((40 - 10) / 2)   // 15 — head left x
-  const HY = 4 + bob                      // head top y
+  const HY = 8 + bob                      // head top y (shifted down)
   const BX = Math.round((40 - bodyW) / 2) // body left x
-  const BY = HY + 15                      // body top y
-  const LY = BY + 17                      // legs top y
-  const SY = LY + 21                      // shoe top y
+  const BY = HY + 14                      // body top y
+  const LY = BY + 16                      // legs top y → ~38
+  const SY = LY + 35                      // shoe top y → ~73 (feet bottom ~76)
 
   // ══ SLEEPING ══
   if (pose === 'sleep') {
-    ctx.fillStyle = pantsShade; ctx.fillRect(2, 50, 28, 7)
-    ctx.fillStyle = shirtShade; ctx.fillRect(11, 48, 18, 9)
-    ctx.fillStyle = skinShade;  ctx.fillRect(28, 49, 10, 8)
+    // Lying horizontally near the bottom of the canvas (feet ~row 76)
+    const baseY = 68
+    ctx.fillStyle = pantsShade; ctx.fillRect(2,  baseY,     28, 8)
+    ctx.fillStyle = shirtShade; ctx.fillRect(11, baseY - 2, 18, 10)
+    ctx.fillStyle = skinShade;  ctx.fillRect(28, baseY - 1, 10, 9)
     ctx.fillStyle = hairShade
-    ctx.fillRect(28, 49, 10, 3)
-    if (hairType <= 1) ctx.fillRect(36, 52, 3, 5)
-    else               ctx.fillRect(27, 49, 2, 8)
-    ctx.fillStyle = '#0c0c0c'; ctx.fillRect(30, 53, 4, 1)  // closed eye
-    ctx.fillStyle = shoeShade;  ctx.fillRect(2, 50, 5, 9)
+    ctx.fillRect(28, baseY - 1, 10, 3)
+    if (hairType <= 1) ctx.fillRect(36, baseY + 2, 3, 5)
+    else               ctx.fillRect(27, baseY - 1, 2, 8)
+    ctx.fillStyle = '#0c0c0c'; ctx.fillRect(30, baseY + 3, 4, 1)
+    ctx.fillStyle = shoeShade;  ctx.fillRect(2,  baseY,     5, 9)
     return
   }
 
   // ══ SITTING ══
+  // Seat height: assume chair seat at row ~62 (lap), feet on floor at ~76
   if (pose === 'sit') {
-    // Hair back
+    const sitBY = HY + 14         // body top
+    const sitLY = sitBY + 26      // thighs/seat top (~48)
     ctx.fillStyle = hairShade
     if (hairType >= 2) { ctx.fillRect(HX-1, HY, 2, 14); ctx.fillRect(HX+9, HY, 2, 14) }
-    // Head
     ctx.fillStyle = skinShade; ctx.fillRect(HX, HY, 10, 12)
     _drawHair(ctx, hairType, HX, HY, hairShade)
     _drawFace(ctx, HX, HY, smileType, hasGlasses, hairShade)
-    // Neck
     ctx.fillStyle = skinShade; ctx.fillRect(HX+3, HY+12, 4, 3)
-    // Arms
-    ctx.fillStyle = shirtShade; ctx.fillRect(BX-5, BY, 5, 10)
-    ctx.fillStyle = skinShade;  ctx.fillRect(BX-5, BY+10, 5, 4)
-    ctx.fillStyle = shirtShade; ctx.fillRect(BX+bodyW, BY, 5, 10)
-    ctx.fillStyle = skinShade;  ctx.fillRect(BX+bodyW, BY+10, 5, 4)
+    // Arms forward (in lap)
+    ctx.fillStyle = shirtShade; ctx.fillRect(BX-4, sitBY+3, 5, 11)
+    ctx.fillStyle = skinShade;  ctx.fillRect(BX-4, sitBY+13, 5, 4)
+    ctx.fillStyle = shirtShade; ctx.fillRect(BX+bodyW-1, sitBY+3, 5, 11)
+    ctx.fillStyle = skinShade;  ctx.fillRect(BX+bodyW-1, sitBY+13, 5, 4)
     // Body
-    ctx.fillStyle = shirtShade; ctx.fillRect(BX, BY, bodyW, 17)
-    _drawShirtDetail(ctx, BX, BY, bodyW, shirtType)
-    // Sitting legs
+    ctx.fillStyle = shirtShade; ctx.fillRect(BX, sitBY, bodyW, 17)
+    _drawShirtDetail(ctx, BX, sitBY, bodyW, shirtType)
+    // Thighs (horizontal)
     ctx.fillStyle = pantsShade
-    ctx.fillRect(BX+1, LY, 6, 10);       ctx.fillRect(BX+bodyW-7, LY, 6, 10)
-    ctx.fillRect(BX-2, LY+9, 10, 6);     ctx.fillRect(BX+bodyW-8, LY+9, 10, 6)
+    ctx.fillRect(BX-2, sitLY,    bodyW+4, 7)
+    // Lower legs (vertical, drop to floor)
+    ctx.fillRect(BX+1,         sitLY+7, 6, 18)
+    ctx.fillRect(BX+bodyW-7,   sitLY+7, 6, 18)
+    // Shoes (feet at row ~73-76)
     ctx.fillStyle = shoeShade
-    ctx.fillRect(BX-3, LY+13, 11, 3);    ctx.fillRect(BX+bodyW-9, LY+13, 11, 3)
+    ctx.fillRect(BX-1,         sitLY+25, 9, 3)
+    ctx.fillRect(BX+bodyW-8,   sitLY+25, 9, 3)
     return
   }
 
@@ -197,27 +244,27 @@ function _proceduralNormie(ctx, id, pose, walkPhase) {
   // Neck
   ctx.fillStyle = skinShade; ctx.fillRect(HX+3, HY+12, 4, 3)
 
-  // Left arm (animates with lAs)
-  ctx.fillStyle = shirtShade; ctx.fillRect(BX-5, BY+lAs, 5, 10)
-  ctx.fillStyle = skinShade;  ctx.fillRect(BX-5, BY+10+lAs, 5, 4)
+  // Left arm
+  ctx.fillStyle = shirtShade; ctx.fillRect(BX-5, BY+lAs, 5, 11)
+  ctx.fillStyle = skinShade;  ctx.fillRect(BX-5, BY+11+lAs, 5, 4)
 
-  // Right arm (animates with rAs)
-  ctx.fillStyle = shirtShade; ctx.fillRect(BX+bodyW, BY+rAs, 5, 10)
-  ctx.fillStyle = skinShade;  ctx.fillRect(BX+bodyW, BY+10+rAs, 5, 4)
+  // Right arm
+  ctx.fillStyle = shirtShade; ctx.fillRect(BX+bodyW, BY+rAs, 5, 11)
+  ctx.fillStyle = skinShade;  ctx.fillRect(BX+bodyW, BY+11+rAs, 5, 4)
 
   // Body
   ctx.fillStyle = shirtShade; ctx.fillRect(BX, BY, bodyW, 17)
   _drawShirtDetail(ctx, BX, BY, bodyW, shirtType)
 
-  // Legs
+  // Legs (long: row ~39 → ~73)
   ctx.fillStyle = pantsShade
-  ctx.fillRect(BX+1+llx, LY+lly, 6, 21)
-  ctx.fillRect(BX+bodyW-7+rlx, LY+rly, 6, 21)
+  ctx.fillRect(BX+1+llx,        LY+lly, 6, 34)
+  ctx.fillRect(BX+bodyW-7+rlx,  LY+rly, 6, 34)
 
-  // Shoes
+  // Shoes (feet at row 73-76)
   ctx.fillStyle = shoeShade
-  ctx.fillRect(BX-1+llx, SY+lly, 9, 3)
-  ctx.fillRect(BX+bodyW-8+rlx, SY+rly, 9, 3)
+  ctx.fillRect(BX-1+llx,        SY+lly, 9, 3)
+  ctx.fillRect(BX+bodyW-8+rlx,  SY+rly, 9, 3)
 }
 
 // ── Sub-helpers ────────────────────────────────────────────────────────────
