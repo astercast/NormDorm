@@ -1,7 +1,7 @@
 import {
   ALL_NEEDS, NEED_DECAY, ACTIVITY_META, ARCHETYPES,
   UPGRADES, ACHIEVEMENTS,
-  MAX_OFFLINE_MINS, TICK_MS, GAME_MINS_PER_TICK,
+  MAX_OFFLINE_MINS, TICK_MS, GAME_MINS_PER_TICK, COMBO_MAX,
 } from './constants.js'
 
 // ── Needs ──────────────────────────────────────────────────────────────────
@@ -132,8 +132,20 @@ export function loadState(address) {
 export function applyOfflineCatchup(saved) {
   const now = Date.now()
   const elapsed = Math.min((now - (saved.savedAt || now)) / 1000 / 60, MAX_OFFLINE_MINS)
-  const ticks = Math.floor(elapsed * (60 / (TICK_MS / 1000)) / GAME_MINS_PER_TICK)
-  // Just return state with time elapsed, ticks applied externally for simplicity
+  const ticks = Math.floor(elapsed * 60 / (TICK_MS / 1000))
+
+  if (ticks > 0 && saved.normies?.length) {
+    // Apply need decay (no activity fills — normies went idle)
+    for (const n of saved.normies) {
+      for (const need of ALL_NEEDS) {
+        n.needs[need] = clamp((n.needs[need] ?? 50) - NEED_DECAY[need] * ticks * 0.4)
+      }
+    }
+    // Award reduced passive income for offline time
+    const passivePerTick = (saved.normies.length * 0.6)
+    saved.coins = (saved.coins || 0) + passivePerTick * ticks * 0.3
+  }
+
   return { state: saved, offlineMinutes: Math.floor(elapsed) }
 }
 
@@ -158,18 +170,37 @@ export function buildUpgradeEffects(purchased) {
   return effects
 }
 
+// ── Dorm happiness ─────────────────────────────────────────────────────────
+
+export function calcDormHappiness(normies) {
+  if (!normies?.length) return 0
+  let total = 0
+  for (const n of normies) {
+    total += ALL_NEEDS.reduce((s, k) => s + (n.needs[k] || 0), 0) / ALL_NEEDS.length
+  }
+  return Math.round(total / normies.length)
+}
+
 // ── Achievements ───────────────────────────────────────────────────────────
 
 export function checkAchievements(stats, earned) {
   const newOnes = []
   const check = (id, cond) => { if (cond && !earned.includes(id)) newOnes.push(id) }
-  check('first_click',    stats.totalClicks      >= 1)
-  check('combo_5',        stats.maxCombo         >= 5)
-  check('coins_1000',     stats.totalCoinsEarned >= 1000)
-  check('coins_10000',    stats.totalCoinsEarned >= 10000)
+  check('first_click',    stats.totalClicks        >= 1)
+  check('combo_5',        stats.maxCombo           >= 5)
+  check('combo_max',      stats.maxCombo           >= COMBO_MAX)
+  check('coins_500',      stats.totalCoinsEarned   >= 500)
+  check('coins_1000',     stats.totalCoinsEarned   >= 1000)
+  check('coins_5000',     stats.totalCoinsEarned   >= 5000)
+  check('coins_25000',    stats.totalCoinsEarned   >= 25000)
   check('all_happy',      stats.allHappyOnce)
+  check('peak_dorm',      stats.peakHappinessOnce)
   check('first_upgrade',  stats.totalUpgradesBought >= 1)
+  check('five_upgrades',  stats.totalUpgradesBought >= 5)
   check('six_activities', stats.allActivitiesOnce)
-  check('feed_5',         stats.feedCount        >= 5)
+  check('feed_5',         stats.feedCount          >= 5)
+  check('feed_20',        stats.feedCount          >= 20)
+  check('survivor',       stats.criticalRecovered  >= 1)
+  check('night_owl',      stats.nightOwlOnce)
   return newOnes
 }

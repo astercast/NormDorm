@@ -13,6 +13,7 @@ import {
   saveState, loadState, freshNeeds, buildPersonality,
   pickActivity, activityDuration, tickNormie,
   applyOfflineCatchup, buildUpgradeEffects, checkAchievements, clamp,
+  calcDormHappiness,
 } from './state.js'
 import { lookupNormies, fetchNormiesData } from './wallet.js'
 import { preloadNormieImage } from './pixel-renderer.js'
@@ -56,14 +57,15 @@ export class App {
     this.earnedAchievements = []
     this.gameStats = {
       totalClicks:0, totalCoinsEarned:0, totalUpgradesBought:0,
-      allHappyOnce:false, allActivitiesOnce:false,
-      maxCombo:0, satisfiedCount:0, feedCount:0,
+      allHappyOnce:false, allActivitiesOnce:false, peakHappinessOnce:false, nightOwlOnce:false,
+      maxCombo:0, satisfiedCount:0, feedCount:0, criticalRecovered:0,
     }
 
     this._tick = null; this._save = null
     this._chat = null; this._raf  = null
     this._lastRaf = null
     this._glyphRaf = null
+    this._incomeHistory = []
   }
 
   async init() {
@@ -294,14 +296,24 @@ export class App {
         <div class="tab-content active" id="tab-dorm">
           <div class="dorm-layout">
             <div class="dorm-main">
-              <div id="combo-meter" class="combo-meter" style="display:none">
+              <div id="combo-meter" class="combo-meter">
                 <span class="combo-label">COMBO</span>
-                <span id="combo-val" class="combo-val">×1</span>
+                <span id="combo-val" class="combo-val">CLICK</span>
                 <div class="combo-track"><div id="combo-bar" class="combo-bar"></div></div>
               </div>
               <div id="dorm-building-wrap"></div>
             </div>
             <div class="dorm-sidebar">
+              <div class="sb-section sb-happiness">
+                <div class="sb-title">HAPPINESS <span id="happiness-pct" class="happiness-pct">--%</span></div>
+                <div class="happiness-bar-wrap">
+                  <div class="happiness-bar"><div id="happiness-fill" class="happiness-fill"></div></div>
+                </div>
+                <div class="income-row">
+                  <span class="income-label">Income</span>
+                  <span id="stat-income" class="income-val">—</span>
+                </div>
+              </div>
               <div class="sb-section">
                 <div class="sb-title">STATS</div>
                 <div class="stats-grid">
@@ -345,7 +357,7 @@ export class App {
     renderRoster(this.normies)
     renderShop(this.purchasedUpgrades, this.coins, id => this._buyUpgrade(id))
     renderAchievements(this.earnedAchievements)
-    updateStats(this.normies, this.coins, this.gameMinute)
+    updateStats(this.normies, this.coins, this.gameMinute, calcDormHappiness(this.normies), 0)
 
     document.addEventListener('normie-click',  e => this._onNormieClick(e.detail.id))
     document.addEventListener('normie-action', e => this._onNormieAction(e.detail.action, e.detail.id))
@@ -405,7 +417,7 @@ export class App {
     logEvent(EVENT_TEMPLATES.coins(normie.name, amt, this.comboCount))
     showDetailPanel(normie, this.coins)
     this._checkAchievements()
-    updateStats(this.normies, this.coins, this.gameMinute)
+    updateStats(this.normies, this.coins, this.gameMinute, calcDormHappiness(this.normies), this._incomePerMin())
   }
 
   _maxCombo() { return COMBO_MAX + (this.upgradeEffects.comboBonus || 0) }
@@ -421,7 +433,7 @@ export class App {
     if (action === 'study')  { normie.needs.study  = clamp(normie.needs.study + 30); normie.needs.fun = clamp(normie.needs.fun - 5); notify(`Focus session for ${normie.name}`,'info') }
     closeDetailPanel()
     setTimeout(() => showDetailPanel(normie, this.coins), 60)
-    updateStats(this.normies, this.coins, this.gameMinute)
+    updateStats(this.normies, this.coins, this.gameMinute, calcDormHappiness(this.normies), this._incomePerMin())
     this._checkAchievements()
   }
 
@@ -441,7 +453,7 @@ export class App {
       logEvent(EVENT_TEMPLATES.studySession())
     }
     renderShop(this.purchasedUpgrades, this.coins, id => this._buyUpgrade(id))
-    updateStats(this.normies, this.coins, this.gameMinute)
+    updateStats(this.normies, this.coins, this.gameMinute, calcDormHappiness(this.normies), this._incomePerMin())
   }
 
   _buyUpgrade(upgradeId) {
@@ -458,7 +470,7 @@ export class App {
     logEvent(EVENT_TEMPLATES.upgrade(upg.name, lvl + 1))
     renderShop(this.purchasedUpgrades, this.coins, id => this._buyUpgrade(id))
     this._checkAchievements()
-    updateStats(this.normies, this.coins, this.gameMinute)
+    updateStats(this.normies, this.coins, this.gameMinute, calcDormHappiness(this.normies), this._incomePerMin())
   }
 
   _startLoops() {
@@ -477,6 +489,9 @@ export class App {
     const passive = this.normies.length * COINS_PER_TICK_BASE * mult + flat
     this.coins += passive
     this.gameStats.totalCoinsEarned += passive
+
+    this._incomeHistory.push(passive)
+    if (this._incomeHistory.length > 60) this._incomeHistory.shift()
 
     for (const n of this.normies) {
       const satisfiedEvents = tickNormie(n, this.upgradeEffects)
@@ -497,16 +512,31 @@ export class App {
           notify(`${n.name} — ${k} is critical!`, 'warn')
           this.coins = Math.max(0, this.coins - COINS_CRITICAL_PENALTY)
         }
-        if (n.needs[k] > 25 && n._warned?.[k]) n._warned[k] = false
+        if (n.needs[k] > 25 && n._warned?.[k]) {
+          n._warned[k] = false
+          this.gameStats.criticalRecovered++
+        }
       }
       if (n.chatCooldown > 0) n.chatCooldown--
       if (this.tickCount % 5 === 0) updateRosterItem(n)
     }
 
+    // Achievement stat tracking
+    const dormHappiness = calcDormHappiness(this.normies)
+    if (dormHappiness >= 85) this.gameStats.peakHappinessOnce = true
+    if (this.normies.every(n => ALL_NEEDS.every(k => n.needs[k] > 80))) this.gameStats.allHappyOnce = true
+    const gameHour = Math.floor((this.gameMinute / 60) % 24)
+    if (gameHour >= 23 || gameHour === 0) this.gameStats.nightOwlOnce = true
+
     if (this.tickCount % 8 === 0) this._checkAchievements()
-    updateStats(this.normies, this.coins, this.gameMinute)
+    updateStats(this.normies, this.coins, this.gameMinute, dormHappiness, this._incomePerMin())
     updateOccupancy(this.normies)
     this.nightAlpha = updateDayNight(this.gameMinute)
+  }
+
+  _incomePerMin() {
+    if (!this._incomeHistory.length) return 0
+    return (this._incomeHistory.reduce((a, b) => a + b, 0) / this._incomeHistory.length) * 60
   }
 
   _switchActivity(normie) {
@@ -520,7 +550,11 @@ export class App {
       setSpriteScene(normie, targetScene)
     }
     if (changed) {
-      logEvent(EVENT_TEMPLATES[activity]?.(normie.name) || `${normie.name} → ${activity}`)
+      // Only log notable activity transitions to keep the log readable
+      const notable = new Set(['sleeping', 'outside', 'exercising', 'jamming', 'dancing', 'meditating'])
+      if (notable.has(activity)) {
+        logEvent(EVENT_TEMPLATES[activity]?.(normie.name) || `${normie.name} → ${activity}`)
+      }
       this.coins += COINS_ACTIVITY_SWITCH
       onActivityChanged(normie)
     }
@@ -551,15 +585,22 @@ export class App {
   }
 
   _checkAchievements() {
-    if (this.normies.every(n => ALL_NEEDS.every(k => n.needs[k] > 80))) this.gameStats.allHappyOnce = true
     const acts = new Set(this.normies.map(n => n.activity))
     if (acts.size >= 6) this.gameStats.allActivitiesOnce = true
     const newly = checkAchievements(this.gameStats, this.earnedAchievements)
     for (const id of newly) {
       this.earnedAchievements.push(id)
       const ach = ACHIEVEMENTS.find(a => a.id === id)
-      if (ach) { showAchievementToast(ach); logEvent(EVENT_TEMPLATES.achieve(ach.name)) }
+      if (ach) {
+        showAchievementToast(ach)
+        logEvent(EVENT_TEMPLATES.achieve(ach.name))
+        if (ach.reward) {
+          this.coins += ach.reward
+          this.gameStats.totalCoinsEarned += ach.reward
+        }
+      }
     }
+    if (newly.length && this.activeTab === 'achievements') renderAchievements(this.earnedAchievements)
   }
 
   _doSave() {

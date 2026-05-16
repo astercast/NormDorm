@@ -336,9 +336,16 @@ code { font-family:var(--font-mono); background:var(--bg2); padding:1px 5px; fon
   position:sticky; top:0; z-index:50; background:var(--panel);
   border:1px solid var(--border); border-radius:var(--radius); padding:8px 14px;
   margin-bottom:12px; display:flex; align-items:center; gap:10px; box-shadow:var(--sh);
+  opacity:.45; transition:opacity .25s, border-color .25s;
 }
+.combo-meter.combo-active {
+  opacity:1; border-color:var(--border3);
+  box-shadow:0 0 0 2px rgba(26,25,24,.06), var(--sh);
+  animation:comboActivePulse .4s ease-out;
+}
+@keyframes comboActivePulse { 0%{transform:scale(1.01)} 100%{transform:scale(1)} }
 .combo-label { font-size:10px; letter-spacing:1px; color:var(--text3); font-weight:600 }
-.combo-val { font-family:var(--font-mono); font-size:20px; font-weight:700; min-width:38px; animation:comboPop .15s ease-out }
+.combo-val { font-family:var(--font-mono); font-size:20px; font-weight:700; min-width:44px; animation:comboPop .15s ease-out }
 @keyframes comboPop { 0%{transform:scale(1.3)} 100%{transform:scale(1)} }
 .combo-track { flex:1; height:4px; background:var(--bg2); border-radius:4px; overflow:hidden }
 .combo-bar { height:100%; background:var(--accent); border-radius:4px; transition:width .1s }
@@ -377,6 +384,19 @@ code { font-family:var(--font-mono); background:var(--bg2); padding:1px 5px; fon
 .stat-block { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:8px; text-align:center }
 .stat-val { font-family:var(--font-mono); font-size:18px; font-weight:700 }
 .stat-lbl { font-size:9px; font-weight:500; letter-spacing:.5px; color:var(--text3); margin-top:2px; text-transform:uppercase }
+
+/* Happiness bar */
+.sb-happiness .sb-title { margin-bottom:6px }
+.happiness-bar-wrap { margin-bottom:6px }
+.happiness-bar { height:6px; background:var(--bg3); border-radius:4px; overflow:hidden }
+.happiness-fill { height:100%; border-radius:4px; transition:width .6s ease, background .6s ease; width:0% }
+.happiness-fill.hap-great { background:#6aa06a }
+.happiness-fill.hap-ok    { background:#a0a060 }
+.happiness-fill.hap-low   { background:#c06060 }
+.happiness-pct { font-family:var(--font-mono); font-size:11px; color:var(--text2); font-weight:600; margin-left:auto }
+.income-row { display:flex; align-items:center; justify-content:space-between; margin-top:2px }
+.income-label { font-size:10px; color:var(--text3); letter-spacing:.3px }
+.income-val { font-family:var(--font-mono); font-size:11px; color:var(--text2); font-weight:500 }
 
 .sb-click-hint { text-align:center; background:var(--accent-soft); border-radius:0 }
 .hint-text { font-size:13px; color:var(--text2); font-weight:500 }
@@ -447,10 +467,15 @@ code { font-family:var(--font-mono); background:var(--bg2); padding:1px 5px; fon
 .panel-heading { margin-bottom:14px }
 .panel-title { font-size:15px; font-weight:700; letter-spacing:.5px }
 .panel-sub { font-size:13px; color:var(--text3); margin-left:10px }
-.shop-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:10px; margin-bottom:20px }
+
+/* Shop categories */
+.shop-category { margin-bottom:20px }
+.shop-cat-label { font-size:10px; font-weight:600; letter-spacing:1.5px; color:var(--text3); text-transform:uppercase; margin-bottom:8px; padding-bottom:6px; border-bottom:1px solid var(--border) }
+.shop-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(175px,1fr)); gap:10px }
 .shop-card { background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:14px; display:flex; flex-direction:column; gap:6px; transition:all .15s }
 .shop-card:hover { border-color:var(--border3); box-shadow:var(--sh) }
 .shop-card.maxed { opacity:.4 }
+.shop-card.can-afford { border-color:var(--border2) }
 .sc-top { display:flex; align-items:center; justify-content:space-between }
 .sc-icon { font-size:22px }
 .sc-progress { font-family:var(--font-mono); font-size:12px; color:var(--text3); letter-spacing:1px }
@@ -486,6 +511,7 @@ code { font-family:var(--font-mono); background:var(--bg2); padding:1px 5px; fon
 .at-sup  { font-size:9px; font-weight:600; letter-spacing:1px; color:var(--text3); margin-bottom:2px; text-transform:uppercase }
 .at-name { font-size:15px; font-weight:700 }
 .at-desc { font-size:12px; color:var(--text3) }
+.at-reward { font-family:var(--font-mono); font-weight:600; color:var(--text2) }
 
 /* ══════════════════════════════════════════════════════════════════
    NOTIFICATIONS

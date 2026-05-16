@@ -50,10 +50,11 @@ export function showCoinPop(normieId, amount, combo) {
 
 export function updateComboMeter(combo, maxCombo) {
   const el = document.getElementById('combo-meter'); if (!el) return
-  el.style.display = combo > 1 ? 'flex' : 'none'
-  el.querySelector('#combo-val').textContent = `×${combo}`
+  el.style.display = 'flex'
+  el.classList.toggle('combo-active', combo > 1)
+  el.querySelector('#combo-val').textContent = combo > 1 ? `×${combo}` : 'CLICK'
   const bar = el.querySelector('#combo-bar')
-  if (bar) bar.style.width = `${(combo/maxCombo)*100}%`
+  if (bar) bar.style.width = combo > 1 ? `${(combo / maxCombo) * 100}%` : '0%'
 }
 
 // ── Chat bubbles ──────────────────────────────────────────────────────────────
@@ -103,7 +104,7 @@ function _logLine(parent, msg) {
 
 // ── Stats ─────────────────────────────────────────────────────────────────────
 
-export function updateStats(normies, coins, gameMinute) {
+export function updateStats(normies, coins, gameMinute, dormHappiness, incomePerMin) {
   const h  = Math.floor((gameMinute/60)%24)
   const m  = gameMinute % 60
   const h12 = ((h%12)||12).toString().padStart(2,'0')
@@ -115,6 +116,19 @@ export function updateStats(normies, coins, gameMinute) {
   _v('stat-sleeping',normies.filter(n=>['sleeping','napping'].includes(n.activity)).length)
   _v('stat-gaming',  normies.filter(n=>n.activity==='gaming').length)
   _v('stat-happy',   normies.filter(n=>ALL_NEEDS.every(k=>n.needs[k]>70)).length)
+
+  if (dormHappiness !== undefined) {
+    const fill = document.getElementById('happiness-fill')
+    const pct  = document.getElementById('happiness-pct')
+    if (fill) fill.style.width = `${dormHappiness}%`
+    if (pct)  pct.textContent  = `${dormHappiness}%`
+    const hClass = dormHappiness >= 80 ? 'hap-great' : dormHappiness >= 55 ? 'hap-ok' : 'hap-low'
+    fill?.classList.remove('hap-great','hap-ok','hap-low')
+    fill?.classList.add(hClass)
+  }
+  if (incomePerMin !== undefined) {
+    _v('stat-income', `+${incomePerMin.toFixed(1)}/min`)
+  }
 }
 function _v(id,v) { const e=document.getElementById(id); if(e) e.textContent=v }
 
@@ -227,38 +241,54 @@ export function closeDetailPanel() { document.getElementById('detail-panel')?.re
 
 // ── Shop ──────────────────────────────────────────────────────────────────────
 
+const SHOP_CATEGORIES = [
+  { label:'🛏 Comfort',  ids:['better_food','comfy_beds','social_lounge','shower_gel','gym_pass'] },
+  { label:'💰 Income',   ids:['fast_wifi','dorm_fund','click_boost','mood_ring','combo_gloves']   },
+  { label:'🎯 Activities', ids:['gaming_setup','study_lamp','sound_system','art_supplies']        },
+]
+
 export function renderShop(purchased, coins, onBuy) {
   const panel = document.getElementById('shop-panel'); if (!panel) return
+
+  const cardHTML = (upg) => {
+    const lvl   = purchased[upg.id]||0
+    const maxed = lvl >= upg.maxLevel
+    const cost  = Math.floor(upg.cost * Math.pow(1.65, lvl))
+    const can   = coins >= cost && !maxed
+    return `<div class="shop-card ${maxed?'maxed':''} ${can&&!maxed?'can-afford':''}">
+      <div class="sc-top">
+        <span class="sc-icon">${upg.icon}</span>
+        <div class="sc-progress">${'◆'.repeat(lvl)}${'◇'.repeat(upg.maxLevel-lvl)}</div>
+      </div>
+      <div class="sc-name">${upg.name}</div>
+      <div class="sc-desc">${upg.desc}</div>
+      <button class="btn sc-btn ${can?'can-buy':''}" data-upg="${upg.id}" ${!can?'disabled':''}>
+        ${maxed ? 'MAX ✓' : `${cost.toLocaleString()} 🪙`}
+      </button>
+    </div>`
+  }
+
+  const categoriesHTML = SHOP_CATEGORIES.map(cat => {
+    const upgrades = UPGRADES.filter(u => cat.ids.includes(u.id))
+    if (!upgrades.length) return ''
+    return `<div class="shop-category">
+      <div class="shop-cat-label">${cat.label}</div>
+      <div class="shop-grid">${upgrades.map(cardHTML).join('')}</div>
+    </div>`
+  }).join('')
+
   panel.innerHTML = `
     <div class="panel-heading">
       <span class="panel-title">🏪 UPGRADE SHOP</span>
-      <span class="panel-sub">Spend coins to improve your dorm</span>
+      <span class="panel-sub">Coins: <strong id="shop-coins-display">${Math.floor(coins).toLocaleString()} 🪙</strong></span>
     </div>
-    <div class="shop-grid">
-      ${UPGRADES.map(upg=>{
-        const lvl   = purchased[upg.id]||0
-        const maxed = lvl >= upg.maxLevel
-        const cost  = Math.floor(upg.cost * Math.pow(1.65, lvl))
-        const can   = coins >= cost && !maxed
-        return `<div class="shop-card ${maxed?'maxed':''}">
-          <div class="sc-top">
-            <span class="sc-icon">${upg.icon}</span>
-            <div class="sc-progress">${'◆'.repeat(lvl)}${'◇'.repeat(upg.maxLevel-lvl)}</div>
-          </div>
-          <div class="sc-name">${upg.name}</div>
-          <div class="sc-desc">${upg.desc}</div>
-          <button class="btn sc-btn ${can?'can-buy':''}" data-upg="${upg.id}" ${!can?'disabled':''}>
-            ${maxed ? 'MAX ✓' : `${cost.toLocaleString()} 🪙`}
-          </button>
-        </div>`
-      }).join('')}
-    </div>
+    ${categoriesHTML}
     <div class="panel-heading" style="margin-top:24px">
       <span class="panel-title">⚡ QUICK ACTIONS</span>
       <span class="panel-sub">Instant effects for all normies</span>
     </div>
     <div class="actions-grid">
-      <div class="action-card" data-qa="party">
+      <div class="action-card">
         <span class="ac-icon">🎉</span>
         <span class="ac-name">Quad Party</span>
         <span class="ac-desc">All normies: social +30</span>
@@ -266,7 +296,7 @@ export function renderShop(purchased, coins, onBuy) {
           ${COINS_PARTY_COST}🪙
         </button>
       </div>
-      <div class="action-card" data-qa="study">
+      <div class="action-card">
         <span class="ac-icon">📚</span>
         <span class="ac-name">Study Session</span>
         <span class="ac-desc">All normies: study +25</span>
@@ -321,10 +351,10 @@ export function showAchievementToast(ach) {
     <div>
       <div class="at-sup">Achievement Unlocked!</div>
       <div class="at-name">${ach.name}</div>
-      <div class="at-desc">${ach.desc}</div>
+      <div class="at-desc">${ach.desc}${ach.reward ? ` <span class="at-reward">+${ach.reward}🪙</span>` : ''}</div>
     </div>`
   document.body.appendChild(el)
-  setTimeout(()=>{ el.classList.add('at-exit'); setTimeout(()=>el.remove(),600) }, 4000)
+  setTimeout(()=>{ el.classList.add('at-exit'); setTimeout(()=>el.remove(),600) }, 4500)
 }
 
 // ── Offline modal ─────────────────────────────────────────────────────────────
@@ -396,59 +426,42 @@ export function renderHowItWorks(root) {
           <div class="hiw-section-icon">🏠</div>
           <h2>What is NormDorm?</h2>
           <p>NormDorm is an idle life simulator for <a href="https://normies.art" target="_blank">Normies NFTs</a> — a 10,000-piece generative pixel art collection on Ethereum.</p>
-          <p>Connect your wallet to load your Normies into a pixel dorm. They live their own lives — sleeping, gaming, studying, chatting — while you earn coins, upgrade the dorm, and keep them happy.</p>
-          <p>No play-to-earn, no fees, no transactions. Just vibes.</p>
+          <p>Enter your Ethereum address to load your Normies into a pixel dorm. They live their own lives — sleeping, gaming, studying, chatting — while you earn coins, upgrade the dorm, and keep them happy.</p>
+          <p>No wallet connection required. No fees, no transactions. Just vibes.</p>
         </section>
 
         <section class="hiw-section hiw-safety">
           <div class="hiw-section-icon">🛡️</div>
-          <h2>Is it safe to connect my wallet?</h2>
+          <h2>Is it safe?</h2>
           <div class="safety-grid">
             <div class="safety-item good">
               <span class="si-icon">✅</span>
               <div>
-                <strong>Read-only access</strong>
-                <p>We only read your wallet address and which Normies you own. Nothing more.</p>
+                <strong>No wallet connection</strong>
+                <p>Just type any Ethereum address. No extension required, no approval pop-ups, nothing to sign.</p>
               </div>
             </div>
             <div class="safety-item good">
               <span class="si-icon">✅</span>
               <div>
-                <strong>No transaction requests</strong>
-                <p>We never ask you to approve, sign, or send anything. Your wallet will never show a transaction popup from us.</p>
-              </div>
-            </div>
-            <div class="safety-item good">
-              <span class="si-icon">✅</span>
-              <div>
-                <strong>No private key access</strong>
-                <p>Your private keys never leave your wallet. We only see your public address.</p>
+                <strong>Read-only blockchain queries</strong>
+                <p>We read public Transfer event logs to determine which Normies an address holds. Zero gas, zero risk.</p>
               </div>
             </div>
             <div class="safety-item good">
               <span class="si-icon">✅</span>
               <div>
                 <strong>No backend / no server</strong>
-                <p>NormDorm is a static frontend app. Your game state saves to your own browser (localStorage). Nothing is sent to any server.</p>
-              </div>
-            </div>
-            <div class="safety-item good">
-              <span class="si-icon">✅</span>
-              <div>
-                <strong>Open code</strong>
-                <p>The only two contract calls we make are <code>balanceOf</code> and <code>tokenOfOwnerByIndex</code> — standard ERC-721 read functions with zero gas cost.</p>
+                <p>NormDorm is a static frontend. Game state saves to your own browser's localStorage only.</p>
               </div>
             </div>
             <div class="safety-item bad">
               <span class="si-icon">❌</span>
               <div>
                 <strong>We never do this</strong>
-                <p>Request token approvals, ask for signatures, initiate transactions, access DeFi protocols, or touch any other contracts.</p>
+                <p>Request signatures, approvals, or transactions of any kind.</p>
               </div>
             </div>
-          </div>
-          <div class="hiw-tip">
-            💡 Tip: For maximum safety you can use a view-only wallet like <a href="https://rabby.io" target="_blank">Rabby</a> in watch mode, which cannot sign transactions at all.
           </div>
         </section>
 
@@ -491,11 +504,12 @@ export function renderHowItWorks(root) {
           <div class="hiw-section-icon">💡</div>
           <h2>Tips</h2>
           <div class="hiw-tips">
-            <div class="hiw-tip-item">🖱️ <strong>Click fast</strong> on normies to build a combo multiplier — your coins multiply up to 8x!</div>
+            <div class="hiw-tip-item">🖱️ <strong>Click fast</strong> on normies to build a combo multiplier — your coins multiply up to ×8!</div>
             <div class="hiw-tip-item">💤 <strong>Check back often</strong> — needs decay while you're away, but NormDorm does offline catchup when you return</div>
             <div class="hiw-tip-item">📶 <strong>Invest in WiFi early</strong> — passive income upgrades compound over time</div>
-            <div class="hiw-tip-item">😊 <strong>Happy normies earn more</strong> — keeping all needs above 70 unlocks the "Happy Dorm" achievement and bonus coins</div>
+            <div class="hiw-tip-item">😊 <strong>Happy normies earn more</strong> — keep average dorm happiness above 85% for the Peak Dorm achievement</div>
             <div class="hiw-tip-item">🎯 <strong>Traits matter</strong> — your normie's on-chain traits affect their personality and which activities they prefer</div>
+            <div class="hiw-tip-item">🏆 <strong>Achievements pay</strong> — every achievement unlocked gives you a coin bonus</div>
           </div>
         </section>
 

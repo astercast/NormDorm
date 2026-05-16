@@ -78,16 +78,16 @@ export const TICK_MS             = 1000
 export const GAME_MINS_PER_TICK  = 1
 export const MAX_OFFLINE_MINS    = 20160
 
-export const COINS_CLICK_BASE           = 8
-export const COINS_PER_TICK_BASE        = 0.6
-export const COINS_NEED_SATISFIED       = 15
-export const COINS_CRITICAL_PENALTY     = 8
-export const COINS_FEED_COST            = 35
-export const COINS_ENERGY_DRINK_COST    = 50
-export const COINS_STUDY_SESSION_COST   = 45
-export const COINS_PARTY_COST           = 80
+export const COINS_CLICK_BASE           = 10
+export const COINS_PER_TICK_BASE        = 0.8
+export const COINS_NEED_SATISFIED       = 20
+export const COINS_CRITICAL_PENALTY     = 5
+export const COINS_FEED_COST            = 30
+export const COINS_ENERGY_DRINK_COST    = 45
+export const COINS_STUDY_SESSION_COST   = 40
+export const COINS_PARTY_COST           = 70
 export const COINS_ACTIVITY_SWITCH      = 2
-export const COMBO_WINDOW_MS            = 2500
+export const COMBO_WINDOW_MS            = 2800
 export const COMBO_MAX                  = 8
 
 export const UPGRADES = [
@@ -108,14 +108,22 @@ export const UPGRADES = [
 ]
 
 export const ACHIEVEMENTS = [
-  { id:'first_click',    icon:'👆', name:'First Click',       desc:'Click your first normie'         },
-  { id:'combo_5',        icon:'🔥', name:'Combo ×5',          desc:'Hit a ×5 click combo'            },
-  { id:'coins_1000',     icon:'🪙', name:'Bag Secured',       desc:'Earn 1,000 coins total'          },
-  { id:'all_happy',      icon:'😊', name:'Dorm Bliss',        desc:'All needs above 80 at once'      },
-  { id:'first_upgrade',  icon:'⬆️', name:'Upgrade Time',      desc:'Buy your first upgrade'          },
-  { id:'six_activities', icon:'🎯', name:'Variety Pack',      desc:'6 different activities at once'  },
-  { id:'feed_5',         icon:'🍜', name:'Mess Hall',         desc:'Feed normies 5 times'            },
-  { id:'coins_10000',    icon:'💰', name:'Dorm Millionaire',  desc:'Earn 10,000 coins total'         },
+  { id:'first_click',    icon:'👆', name:'First Click',       desc:'Click your first normie',                    reward:25  },
+  { id:'combo_5',        icon:'🔥', name:'On Fire',           desc:'Build a ×5 click combo',                     reward:50  },
+  { id:'combo_max',      icon:'🚀', name:'Full Send',         desc:'Hit the maximum ×8 combo',                   reward:150 },
+  { id:'coins_500',      icon:'🪙', name:'First Paycheck',    desc:'Earn 500 coins total',                       reward:0   },
+  { id:'coins_1000',     icon:'💰', name:'Bag Secured',       desc:'Earn 1,000 coins total',                     reward:0   },
+  { id:'coins_5000',     icon:'💎', name:'Dorm Rich',         desc:'Earn 5,000 coins total',                     reward:100 },
+  { id:'coins_25000',    icon:'🏦', name:'Mogul',             desc:'Earn 25,000 coins total',                    reward:500 },
+  { id:'all_happy',      icon:'😊', name:'Dorm Bliss',        desc:'All normies above 80 needs at once',         reward:200 },
+  { id:'peak_dorm',      icon:'✨', name:'Peak Dorm',         desc:'Average dorm happiness above 85%',           reward:350 },
+  { id:'first_upgrade',  icon:'⬆️', name:'Renovator',         desc:'Buy your first upgrade',                     reward:50  },
+  { id:'five_upgrades',  icon:'🛠️', name:'Handyman',         desc:'Purchase 5 upgrades total',                  reward:150 },
+  { id:'six_activities', icon:'🎯', name:'Variety Pack',      desc:'6 different activities at once',             reward:75  },
+  { id:'feed_5',         icon:'🍜', name:'Mess Hall',         desc:'Feed normies 5 times',                       reward:50  },
+  { id:'feed_20',        icon:'🧑‍🍳', name:'Head Chef',       desc:'Feed normies 20 times',                      reward:150 },
+  { id:'survivor',       icon:'⚠️', name:'Crisis Averted',   desc:'Recover a normie from a critical need',      reward:75  },
+  { id:'night_owl',      icon:'🌙', name:'Night Owl',         desc:'Have normies active at game midnight',        reward:100 },
 ]
 
 export const EVENT_TEMPLATES = {
