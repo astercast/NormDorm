@@ -1,10 +1,7 @@
 import { NORMIES_CONTRACT, API_BASE } from './constants.js'
 
 const PUBLIC_RPC = 'https://eth.llamarpc.com'
-
-// Normies contract deployment block (Nov 2021, ~block 13 500 000).
-// Scanning from 0x0 causes "block range too large" on all public RPCs.
-const NORMIES_FROM_BLOCK = '0xCE4D00'  // 13,520,128
+const NORMIES_FROM_BLOCK = '0xCE4D00'   // contract deployment block
 
 async function _rpc(method, params, timeoutMs = 12000) {
   const ctrl = new AbortController()
@@ -25,26 +22,30 @@ async function _rpc(method, params, timeoutMs = 12000) {
 }
 
 // ── Address lookup — no wallet needed ──────────────────────────────────────
+// Strategy order (mirrors NormiesArchive):
+//  1. api.normies.art  /holders/:address  — fastest, always accurate
+//  2. eth_getLogs from deployment block   — pure on-chain fallback
 export async function lookupNormies(address) {
   const addr = address.toLowerCase()
 
-  // 1. Try the normies.art API first — fast, no block-range limits
+  // 1. normies.art holders endpoint  →  { address, tokenIds: ["42", "100"] }
   try {
-    const r = await fetch(`${API_BASE}/wallet/${addr}`,
-      { signal: AbortSignal.timeout(7000) })
+    const r = await fetch(`${API_BASE}/holders/${addr}`,
+      { signal: AbortSignal.timeout(8000) })
     if (r.ok) {
       const data = await r.json()
-      // Handle various response shapes the API might return
-      const ids = Array.isArray(data)
-        ? data
-        : Array.isArray(data?.normies) ? data.normies
-        : Array.isArray(data?.ids)     ? data.ids
-        : null
-      if (ids?.length) return ids.map(Number).filter(Boolean).sort((a,b)=>a-b).slice(0, 12)
+      const ids  = Array.isArray(data?.tokenIds) ? data.tokenIds
+                 : Array.isArray(data?.ids)       ? data.ids
+                 : Array.isArray(data)            ? data
+                 : null
+      if (ids?.length) {
+        return ids.map(Number).filter(n => Number.isFinite(n) && n >= 0 && n <= 9999)
+                  .sort((a, b) => a - b).slice(0, 12)
+      }
     }
-  } catch { /* fall through to RPC */ }
+  } catch { /* fall through */ }
 
-  // 2. Fall back to eth_getLogs (from known deployment block, not genesis)
+  // 2. eth_getLogs fallback
   const paddedAddr = '0x' + addr.slice(2).padStart(64, '0')
   const TRANSFER   = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
 

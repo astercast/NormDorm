@@ -322,7 +322,6 @@ export class App {
           </div>
           <div class="time-pill" id="stat-time">12:00 AM</div>
           <div class="addr-chip">${addrLabel}</div>
-          <a href="https://normies.art" target="_blank" class="header-link">normies.art ↗</a>
           <button class="theme-toggle" id="theme-toggle">🌙</button>
           <button class="btn btn-ghost btn-sm" id="btn-leave">✕</button>
         </div>
@@ -330,14 +329,36 @@ export class App {
       ${this.isDemo ? '<div class="demo-banner">DEMO MODE — enter an address on the home screen to load your own Normies</div>' : ''}
 
       <div class="tab-bar">
-        <button class="tab-btn active" data-tab="dorm">🏠 DORM</button>
-        <button class="tab-btn" data-tab="shop">🛒 SHOP</button>
-        <button class="tab-btn" data-tab="achievements">🏆 ACHIEVEMENTS</button>
-        <button class="tab-btn" data-tab="leaderboard">🏅 LEADERBOARD</button>
+        <button class="tab-btn active" data-tab="dorm"><span class="tb-icon">🏠</span><span class="tb-label">DORM</span></button>
+        <button class="tab-btn" data-tab="shop"><span class="tb-icon">🛒</span><span class="tb-label">SHOP</span></button>
+        <button class="tab-btn" data-tab="achievements"><span class="tb-icon">🏆</span><span class="tb-label">CHALLENGES</span></button>
+        <button class="tab-btn" data-tab="leaderboard"><span class="tb-icon">🏅</span><span class="tb-label">BOARD</span></button>
       </div>
 
       <div class="main-layout">
         <div class="tab-content active" id="tab-dorm">
+
+          <!-- Mobile stat bar (hidden on desktop) -->
+          <div class="mobile-stat-bar">
+            <div class="msb-item">
+              <span class="msb-val" id="msb-happiness">--%</span>
+              <span class="msb-lbl">HAPPY</span>
+            </div>
+            <div class="msb-divider"></div>
+            <div class="msb-item">
+              <span class="msb-val" id="msb-income">—</span>
+              <span class="msb-lbl">/ MIN</span>
+            </div>
+            <div class="msb-divider"></div>
+            <div class="msb-item">
+              <span class="msb-val" id="msb-outside">0</span>
+              <span class="msb-lbl">OUTSIDE</span>
+            </div>
+            <button class="msb-sidebar-toggle" id="msb-sidebar-toggle" aria-label="Toggle info panel">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="3" width="12" height="1.5" rx=".75" fill="currentColor"/><rect x="2" y="7.25" width="12" height="1.5" rx=".75" fill="currentColor"/><rect x="2" y="11.5" width="12" height="1.5" rx=".75" fill="currentColor"/></svg>
+            </button>
+          </div>
+
           <div class="dorm-layout">
             <div class="dorm-main">
               <div id="combo-meter" class="combo-meter">
@@ -347,7 +368,7 @@ export class App {
               </div>
               <div id="dorm-building-wrap"></div>
             </div>
-            <div class="dorm-sidebar">
+            <div class="dorm-sidebar" id="dorm-sidebar">
               <div class="sb-section sb-happiness">
                 <div class="sb-title">HAPPINESS <span id="happiness-pct" class="happiness-pct">--%</span></div>
                 <div class="happiness-bar-wrap">
@@ -403,6 +424,12 @@ export class App {
     document.getElementById('theme-toggle').onclick = toggleTheme
     document.getElementById('btn-leave').onclick    = () => { this._stopAll(); this._renderConnect() }
     document.getElementById('logo-home').onclick    = () => { this._stopAll(); this._renderConnect() }
+
+    // Mobile sidebar toggle
+    document.getElementById('msb-sidebar-toggle')?.addEventListener('click', () => {
+      const sb = document.getElementById('dorm-sidebar')
+      if (sb) sb.classList.toggle('sidebar-open')
+    })
 
     renderRoster(this.normies)
     renderShop(this.purchasedUpgrades, this.coins, id => this._buyUpgrade(id))

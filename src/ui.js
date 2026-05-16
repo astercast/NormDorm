@@ -174,6 +174,15 @@ export function updateStats(normies, coins, gameMinute, dormHappiness, incomePer
   if (incomePerMin !== undefined) {
     _v('stat-income', `+${incomePerMin.toFixed(1)}/min`)
   }
+
+  // Mirror key stats to the mobile stat bar
+  if (dormHappiness !== undefined) {
+    _v('msb-happiness', `${dormHappiness}%`)
+  }
+  if (incomePerMin !== undefined) {
+    _v('msb-income', `+${incomePerMin.toFixed(1)}`)
+  }
+  _v('msb-outside', normies.filter(n => n.location === 'outdoor').length)
 }
 function _v(id,v) { const e=document.getElementById(id); if(e) e.textContent=v }
 

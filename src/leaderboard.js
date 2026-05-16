@@ -1,27 +1,14 @@
-// ── Leaderboard service ────────────────────────────────────────────────────
+// ── NormDorm Leaderboard ───────────────────────────────────────────────────
 //
-// Dual-mode: always writes to localStorage, optionally syncs to Supabase.
+// Calls the Vercel serverless function at /api/leaderboard (Upstash KV).
+// Falls back to localStorage when the API is unavailable (dev / offline).
 //
-// To enable global leaderboard, add to .env:
-//   VITE_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
-//   VITE_SUPABASE_ANON=your-anon-key
-//
-// Supabase table SQL:
-//   CREATE TABLE leaderboard (
-//     address TEXT PRIMARY KEY,
-//     coins BIGINT DEFAULT 0,
-//     normie_count INT DEFAULT 0,
-//     happiness INT DEFAULT 0,
-//     updated_at TIMESTAMPTZ DEFAULT NOW()
-//   );
-//   ALTER TABLE leaderboard ENABLE ROW LEVEL SECURITY;
-//   CREATE POLICY "public_read"   ON leaderboard FOR SELECT USING (true);
-//   CREATE POLICY "public_insert" ON leaderboard FOR INSERT WITH CHECK (true);
-//   CREATE POLICY "public_update" ON leaderboard FOR UPDATE USING (true);
+// Env vars for the API function (set in Vercel project settings):
+//   KV_REST_API_URL
+//   KV_REST_API_TOKEN
 
-const SB_URL  = import.meta.env?.VITE_SUPABASE_URL  || ''
-const SB_ANON = import.meta.env?.VITE_SUPABASE_ANON || ''
-const LS_KEY  = 'nd_leaderboard_v2'
+const API_ENDPOINT = '/api/leaderboard'
+const LS_KEY       = 'nd_leaderboard_v3'
 
 function _getLocal() {
   try { return JSON.parse(localStorage.getItem(LS_KEY) || '[]') } catch { return [] }
@@ -30,61 +17,50 @@ function _saveLocal(entries) {
   try { localStorage.setItem(LS_KEY, JSON.stringify(entries)) } catch {}
 }
 
+// True when the API endpoint is likely reachable (i.e. we're deployed on Vercel)
 export function isGlobalEnabled() {
-  return !!(SB_URL && SB_ANON)
+  return !location.hostname.includes('localhost') && !location.hostname.includes('127.0.0.1')
 }
 
 export async function submitScore({ address, coins, normieCount, happiness }) {
   if (!address) return
-  const addr  = address.toLowerCase()
   const entry = {
-    address:      addr,
-    coins:        Math.floor(coins),
-    normie_count: normieCount,
-    happiness:    Math.floor(happiness),
-    updated_at:   new Date().toISOString(),
+    address:     address.toLowerCase(),
+    coins:       Math.floor(coins),
+    normieCount: normieCount || 0,
+    happiness:   Math.floor(happiness || 0),
+    updatedAt:   Date.now(),
   }
 
-  // Always save / update locally
-  const local = _getLocal().filter(e => e.address !== addr)
+  // Always write locally first
+  const local = _getLocal().filter(e => e.address !== entry.address)
   local.push(entry)
   local.sort((a, b) => b.coins - a.coins)
   _saveLocal(local.slice(0, 200))
 
-  // Submit to Supabase if configured
-  if (SB_URL && SB_ANON) {
-    try {
-      await fetch(`${SB_URL}/rest/v1/leaderboard`, {
-        method:  'POST',
-        headers: {
-          'apikey':        SB_ANON,
-          'Authorization': `Bearer ${SB_ANON}`,
-          'Content-Type':  'application/json',
-          'Prefer':        'resolution=merge-duplicates',
-        },
-        body:   JSON.stringify(entry),
-        signal: AbortSignal.timeout(5000),
-      })
-    } catch { /* silent — local save already succeeded */ }
-  }
+  // Submit to global API (fire-and-forget)
+  try {
+    await fetch(API_ENDPOINT, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(entry),
+      signal:  AbortSignal.timeout(5000),
+    })
+  } catch { /* silent — local save already succeeded */ }
 }
 
 export async function fetchLeaderboard() {
-  if (SB_URL && SB_ANON) {
+  // Try global API first
+  if (isGlobalEnabled()) {
     try {
-      const r = await fetch(
-        `${SB_URL}/rest/v1/leaderboard?select=*&order=coins.desc&limit=100`,
-        {
-          headers: {
-            'apikey':        SB_ANON,
-            'Authorization': `Bearer ${SB_ANON}`,
-          },
-          signal: AbortSignal.timeout(5000),
-        }
-      )
-      if (r.ok) return await r.json()
+      const r = await fetch(API_ENDPOINT, { signal: AbortSignal.timeout(6000) })
+      if (r.ok) {
+        const data = await r.json()
+        if (data.ok && Array.isArray(data.entries)) return data.entries
+      }
     } catch {}
   }
+  // Fall back to local scores
   return _getLocal()
 }
 
