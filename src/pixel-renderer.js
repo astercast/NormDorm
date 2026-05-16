@@ -36,9 +36,11 @@ export async function preloadNormieImage(id) {
 }
 
 // ── Per-frame image loader ─────────────────────────────────────────────────
-// Loads the API PNG, then chromakeys the light-gray background to transparent
-// via an offscreen canvas. Result is cached as a canvas (drawImage-compatible).
-// If CORS or the image fail, cache `null` and let the caller fall back to procedural.
+// Tries to load with CORS so we can chromakey the light-gray background to
+// transparent. If CORS fails (server doesn't send Access-Control-Allow-Origin),
+// retries WITHOUT crossOrigin and caches the raw image — sprite will still
+// render (with the original light-gray rectangle baked in by the API).
+// Only falls back to procedural if both attempts fail.
 function _loadFrame(id, pose, frame) {
   const key = `${id}:${pose}:${frame}`
   if (frameCache.has(key)) return Promise.resolve(frameCache.get(key))
@@ -48,28 +50,36 @@ function _loadFrame(id, pose, frame) {
     : `${FULLNORM}/normies/${id}/full.png?pose=${pose}`
 
   return new Promise(resolve => {
-    const img = new Image()
-    img.crossOrigin = 'anonymous'
-    img.onload  = () => {
+    // ── Step 1: try the CORS path so we can chromakey ──────────────────────
+    const cors = new Image()
+    cors.crossOrigin = 'anonymous'
+    cors.onload  = () => {
       try {
-        const canvas = _chromaKey(img)
+        const canvas = _chromaKey(cors)
         frameCache.set(key, canvas)
         resolve(canvas)
       } catch {
-        // Canvas tainted (CORS failure) — fall through to procedural
-        frameCache.set(key, null)
-        resolve(null)
+        // Tainted (rare) — fall through to raw load
+        _loadRaw(url, key, resolve)
       }
     }
-    img.onerror = () => { frameCache.set(key, null); resolve(null) }
-    img.src = url
+    cors.onerror = () => _loadRaw(url, key, resolve)
+    cors.src = url
   })
 }
 
+// Raw load — no CORS, can be drawn but not read. The canvas will be tainted
+// if we tried to call getImageData, but drawImage works fine for display.
+function _loadRaw(url, key, resolve) {
+  const img = new Image()
+  img.onload  = () => { frameCache.set(key, img);  resolve(img)  }
+  img.onerror = () => { frameCache.set(key, null); resolve(null) }
+  img.src = url
+}
+
 // ── Background-removal: Normies use #e3e5e4 as the canonical light pixel. ──
-// Any pixel where R,G,B are all >= 220 AND within 25 of each other → transparent.
-// This preserves white-ish hat trim and shirt highlights (those use exact 255s
-// or pure tints) while killing the background.
+// Any pixel where R,G,B are all >= 220 AND within 12 of each other → transparent.
+// Preserves shirt highlights and white accents (pure tints stay opaque).
 function _chromaKey(img) {
   const w = img.naturalWidth  || img.width
   const h = img.naturalHeight || img.height
@@ -78,11 +88,11 @@ function _chromaKey(img) {
   const ctx = c.getContext('2d', { willReadFrequently: true })
   ctx.imageSmoothingEnabled = false
   ctx.drawImage(img, 0, 0)
+  // This call throws SecurityError if CORS didn't work. Caller catches.
   const data = ctx.getImageData(0, 0, w, h)
   const px   = data.data
   for (let i = 0; i < px.length; i += 4) {
     const r = px[i], g = px[i+1], b = px[i+2]
-    // Light gray (the canonical Normies background) + near-white pixels
     const isLight = r >= 220 && g >= 220 && b >= 220
                   && Math.abs(r - g) < 12 && Math.abs(g - b) < 12 && Math.abs(r - b) < 12
     if (isLight) px[i+3] = 0
