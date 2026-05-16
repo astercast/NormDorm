@@ -60,12 +60,26 @@ export const OUTDOOR_TYPE = {
 }
 
 export function buildRoomList(normieCount) {
-  const roomCount = Math.max(Math.ceil(Math.max(normieCount, 1) / 2), 3)
+  // Create enough rooms so nobody is overcrowded, but cap room count at 12
+  // for performance. With 12 rooms × 8 occupants each = 96 normies before
+  // overflow. maxOcc scales up for large wallets so rooms stay manageable.
+  const TARGET_OCC = Math.max(4, Math.ceil(normieCount / 12))
+  const roomCount  = Math.max(Math.min(Math.ceil(normieCount / TARGET_OCC), 12), 3)
   const rooms = []
   for (let i = 0; i < roomCount; i++) {
     const type = ROOM_TYPES[i % ROOM_TYPES.length]
     const num  = 100 + i + 1
-    rooms.push({ id:`room-${num}`, number:num, name:`ROOM ${num}`, typeId:type.typeId, typeName:type.typeName, theme:type.theme, activities:[...type.activities], maxOcc:4, desc:type.desc })
+    rooms.push({
+      id:       `room-${num}`,
+      number:   num,
+      name:     `ROOM ${num}`,
+      typeId:   type.typeId,
+      typeName: type.typeName,
+      theme:    type.theme,
+      activities: [...type.activities],
+      maxOcc:   TARGET_OCC,
+      desc:     type.desc,
+    })
   }
   rooms.push({ id:'outdoor', number:0, name:'QUAD', typeId:'outdoor', typeName:'The Quad', theme:'outdoor', activities:[...OUTDOOR_TYPE.activities], maxOcc:99, desc:OUTDOOR_TYPE.desc })
   return rooms

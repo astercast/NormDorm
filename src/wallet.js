@@ -3,7 +3,7 @@ import { NORMIES_CONTRACT, API_BASE } from './constants.js'
 const PUBLIC_RPC = 'https://eth.llamarpc.com'
 const NORMIES_FROM_BLOCK = '0xCE4D00'   // contract deployment block
 
-async function _rpc(method, params, timeoutMs = 12000) {
+async function _rpc(method, params, timeoutMs = 15000) {
   const ctrl = new AbortController()
   const timer = setTimeout(() => ctrl.abort(), timeoutMs)
   try {
@@ -21,7 +21,8 @@ async function _rpc(method, params, timeoutMs = 12000) {
   }
 }
 
-// ── Address lookup — no wallet needed ──────────────────────────────────────
+// ── Address lookup — no wallet needed, no cap ──────────────────────────────
+// Returns every Normie ID the address owns (no artificial limit).
 // Strategy order (mirrors NormiesArchive):
 //  1. api.normies.art  /holders/:address  — fastest, always accurate
 //  2. eth_getLogs from deployment block   — pure on-chain fallback
@@ -31,7 +32,7 @@ export async function lookupNormies(address) {
   // 1. normies.art holders endpoint  →  { address, tokenIds: ["42", "100"] }
   try {
     const r = await fetch(`${API_BASE}/holders/${addr}`,
-      { signal: AbortSignal.timeout(8000) })
+      { signal: AbortSignal.timeout(10000) })
     if (r.ok) {
       const data = await r.json()
       const ids  = Array.isArray(data?.tokenIds) ? data.tokenIds
@@ -40,7 +41,7 @@ export async function lookupNormies(address) {
                  : null
       if (ids?.length) {
         return ids.map(Number).filter(n => Number.isFinite(n) && n >= 0 && n <= 9999)
-                  .sort((a, b) => a - b).slice(0, 12)
+                  .sort((a, b) => a - b)   // no slice — return all of them
       }
     }
   } catch { /* fall through */ }
@@ -58,7 +59,7 @@ export async function lookupNormies(address) {
   for (const log of toLogs)   owned.add(BigInt(log.topics[3]).toString())
   for (const log of fromLogs) owned.delete(BigInt(log.topics[3]).toString())
 
-  return [...owned].map(Number).sort((a, b) => a - b).slice(0, 12)
+  return [...owned].map(Number).sort((a, b) => a - b)  // no slice — return all
 }
 
 // ── Normie metadata from normies.art API ───────────────────────────────────
@@ -85,8 +86,9 @@ export async function fetchNormieData(id) {
 
 export async function fetchNormiesData(ids, onProgress) {
   const results = []
-  for (let i = 0; i < ids.length; i += 5) {
-    const batch   = ids.slice(i, i + 5)
+  // Fetch in batches of 8 for speed; all IDs, no cap
+  for (let i = 0; i < ids.length; i += 8) {
+    const batch   = ids.slice(i, i + 8)
     const settled = await Promise.allSettled(batch.map(id => fetchNormieData(id)))
     for (const s of settled) if (s.status === 'fulfilled' && s.value) results.push(s.value)
     onProgress?.(results.length, ids.length)

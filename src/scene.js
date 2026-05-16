@@ -12,18 +12,15 @@ const ROOM_W = ROOM_TILES_W * TS   // 320px
 const ROOM_H = ROOM_TILES_H * TS   // 224px
 const WALL_H = TS * 2              // 64px
 
-const NORMIE_SCALE  = 2.2          // larger sprites → always visible
+const NORMIE_SCALE         = 2.2          // indoor room sprite scale
+const OUTDOOR_NORMIE_SCALE = 1.4          // smaller outdoors so sprites fit 180px scene
 const SPRITE_W_PCT  = (SPRITE_W * NORMIE_SCALE) / ROOM_W * 100
 
 // Outdoor scene layout — keep in sync with .out-ground in style.css
-const OUTDOOR_GROUND_PX = 56                                  // ground band height (= horizon line)
-// How far above the canvas BOTTOM the sprite's feet are drawn:
-//   canvas_h = SPRITE_H * NORMIE_SCALE
-//   feet_y_in_canvas = SPRITE_FEET_Y * NORMIE_SCALE
-//   foot_offset = canvas_h - feet_y_in_canvas
-const FOOT_OFFSET_PX    = (SPRITE_H - SPRITE_FEET_Y) * NORMIE_SCALE
+const OUTDOOR_GROUND_PX = 56
+const OUT_FOOT_OFFSET   = (SPRITE_H - SPRITE_FEET_Y) * OUTDOOR_NORMIE_SCALE  // 4 * 1.4 = 5.6
 // Sprite `bottom` CSS so feet land exactly on the horizon line
-const OUTDOOR_FEET_Y    = OUTDOOR_GROUND_PX - FOOT_OFFSET_PX
+const OUTDOOR_FEET_Y    = OUTDOOR_GROUND_PX - OUT_FOOT_OFFSET   // 56 - 5.6 = ~50px
 
 // Vanishing point (1-point perspective)
 const VP_X = ROOM_W / 2   // 160
@@ -351,44 +348,42 @@ function _drawGaming(ctx, C) {
   _base(ctx, C)
   _floorTiles(ctx, C, 22)
   _lampPool(ctx, 130, C)
-  // LED strip glow at floor level
-  const led = ctx.createLinearGradient(0, ROOM_H - 4, 0, ROOM_H - 22)
-  led.addColorStop(0, 'rgba(100,160,255,0.28)'); led.addColorStop(1, 'rgba(0,0,0,0)')
-  ctx.fillStyle = led; ctx.fillRect(40, ROOM_H - 22, 240, 22)
-  // Wall LED strip
-  ctx.fillStyle = 'rgba(80,130,220,0.12)'; ctx.fillRect(0, WALL_H - 3, ROOM_W, 6)
+  // Subtle dark LED strip accent at floor level (visible on white floor)
+  const led = ctx.createLinearGradient(0, ROOM_H - 4, 0, ROOM_H - 20)
+  led.addColorStop(0, 'rgba(30,60,120,0.14)'); led.addColorStop(1, 'rgba(0,0,0,0)')
+  ctx.fillStyle = led; ctx.fillRect(40, ROOM_H - 20, 240, 20)
+  // Thin wall accent strip near ceiling
+  ctx.fillStyle = 'rgba(30,60,120,0.08)'; ctx.fillRect(0, WALL_H - 3, ROOM_W, 4)
   // Desk
-  _box3d(ctx, 28, 118, 264, 20, 12, C.md, C.sg, C.dk)
+  _box3d(ctx, 28, 118, 264, 20, 12, C.md, C.lt, C.sg)
   // Ultrawide monitor
   _screen(ctx, 66, 44, 188, 66, C.screen, C.dk)
-  // Second monitor (right, tilted slightly)
-  _screen(ctx, 218, 54, 68, 52, C.screen, '#141414')
+  // Second monitor (right)
+  _screen(ctx, 218, 54, 68, 52, C.screen, C.dk)
   // Keyboard + mousepad
-  ctx.fillStyle = '#181818'; ctx.fillRect(82, 93, 80, 11); ctx.fillStyle = '#262626'; ctx.fillRect(84, 94, 76, 9)
-  // Key highlights
-  ctx.fillStyle = 'rgba(255,255,255,0.06)'
+  ctx.fillStyle = C.md; ctx.fillRect(82, 93, 80, 11); ctx.fillStyle = C.sg; ctx.fillRect(84, 94, 76, 9)
+  ctx.fillStyle = 'rgba(0,0,0,0.06)'
   for (let k = 0; k < 12; k++) ctx.fillRect(86 + k*6, 95, 4, 7)
-  ctx.fillStyle = '#222222'; ctx.fillRect(178, 90, 56, 16); ctx.strokeStyle = '#444'; ctx.lineWidth = 0.5; ctx.strokeRect(178, 90, 56, 16)
-  // Energy drink can on desk
+  ctx.fillStyle = C.sg; ctx.fillRect(178, 90, 56, 16); ctx.strokeStyle = C.md; ctx.lineWidth = 0.5; ctx.strokeRect(178, 90, 56, 16)
+  // Energy drink can
   ctx.fillStyle = C.md; ctx.fillRect(180, 80, 8, 16); ctx.fillStyle = C.lt; ctx.fillRect(181, 82, 6, 8)
   ctx.strokeStyle = C.ink; ctx.lineWidth = 0.5; ctx.strokeRect(180, 80, 8, 16)
   // Gaming chair
   _box3d(ctx, 46, 162, 58, 44, 12, C.md, C.sg, C.dk)
   ctx.fillStyle = C.sg; ctx.fillRect(50, 106, 50, 52); ctx.strokeStyle = C.ink; ctx.lineWidth = 1; ctx.strokeRect(50, 106, 50, 52)
   ctx.fillStyle = C.md; ctx.fillRect(58, 102, 34, 10); ctx.strokeStyle = C.ink; ctx.strokeRect(58, 102, 34, 10)
-  // Armrests
-  _box3d(ctx, 46, 136, 10, 6, 6, C.dk, C.md, '#0e0e0e')
-  _box3d(ctx, 94, 136, 10, 6, 6, C.dk, C.md, '#0e0e0e')
+  _box3d(ctx, 46, 136, 10, 6, 6, C.dk, C.md, C.sg)
+  _box3d(ctx, 94, 136, 10, 6, 6, C.dk, C.md, C.sg)
   // Poster (left wall)
-  _poster(ctx, 14, 9, 48, 46, { md:C.md, lt:C.sg, dk:C.dk, sg:C.md, ink:C.ink, wHi:C.lt })
+  _poster(ctx, 14, 9, 48, 46, C)
   // Speaker (left desk)
-  _box3d(ctx, 30, 116, 28, 38, 8, C.dk, C.md, '#0e0e0e')
+  _box3d(ctx, 30, 116, 28, 38, 8, C.dk, C.md, C.sg)
   // Controller on desk
-  ctx.fillStyle = C.md; ctx.fillRect(136, 94, 24, 14); ctx.fillStyle = C.dk; ctx.fillRect(138, 96, 20, 10)
-  ctx.fillStyle = C.sg; ctx.beginPath(); ctx.arc(143, 100, 3, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(152, 100, 3, 0, Math.PI*2); ctx.fill()
-  // Screen glow on desk surface
+  ctx.fillStyle = C.md; ctx.fillRect(136, 94, 24, 14); ctx.fillStyle = C.sg; ctx.fillRect(138, 96, 20, 10)
+  ctx.fillStyle = C.dk; ctx.beginPath(); ctx.arc(143, 100, 3, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(152, 100, 3, 0, Math.PI*2); ctx.fill()
+  // Screen glow on desk surface (stronger on white)
   const scGlow = ctx.createLinearGradient(66, 110, 66, 130)
-  scGlow.addColorStop(0, 'rgba(80,130,220,0.12)'); scGlow.addColorStop(1, 'rgba(0,0,0,0)')
+  scGlow.addColorStop(0, 'rgba(20,50,120,0.10)'); scGlow.addColorStop(1, 'rgba(0,0,0,0)')
   ctx.fillStyle = scGlow; ctx.fillRect(66, 110, 188, 22)
 }
 
@@ -536,46 +531,49 @@ function _drawLibrary(ctx, C) {
 function _drawMusic(ctx, C) {
   _base(ctx, C)
   _floorPlanks(ctx, C)
-  // Soundproof foam diamond pattern on wall
-  ctx.fillStyle = C.wHi; ctx.globalAlpha = 0.18
+  // Soundproof foam diamond pattern — darker on white walls so it's visible
+  ctx.fillStyle = C.sg; ctx.globalAlpha = 0.22
   const fs = 12
   for (let fx = 0; fx < ROOM_W; fx += fs)
     for (let fy = 0; fy < WALL_H; fy += fs)
       if ((Math.floor(fx/fs) + Math.floor(fy/fs)) % 2 === 0)
         ctx.fillRect(fx + 2, fy + 2, fs - 4, fs - 4)
   ctx.globalAlpha = 1
-  // Studio lighting - warm strip
-  const strip = ctx.createLinearGradient(0, WALL_H, 0, WALL_H + 30)
-  strip.addColorStop(0, 'rgba(255,240,200,0.08)'); strip.addColorStop(1, 'rgba(0,0,0,0)')
-  ctx.fillStyle = strip; ctx.fillRect(0, WALL_H, ROOM_W, 30)
+  // Foam grid lines
+  ctx.strokeStyle = C.md; ctx.globalAlpha = 0.10; ctx.lineWidth = 0.5
+  for (let fx = 0; fx <= ROOM_W; fx += fs) { ctx.beginPath(); ctx.moveTo(fx, 0); ctx.lineTo(fx, WALL_H); ctx.stroke() }
+  for (let fy = 0; fy <= WALL_H; fy += fs) { ctx.beginPath(); ctx.moveTo(0, fy); ctx.lineTo(ROOM_W, fy); ctx.stroke() }
+  ctx.globalAlpha = 1
+  // Warm ceiling strip (recording studio overhead wash)
+  const strip = ctx.createLinearGradient(0, WALL_H, 0, WALL_H + 24)
+  strip.addColorStop(0, 'rgba(180,140,80,0.07)'); strip.addColorStop(1, 'rgba(0,0,0,0)')
+  ctx.fillStyle = strip; ctx.fillRect(0, WALL_H, ROOM_W, 24)
   // Piano / keyboard
   _box3d(ctx, 36, 130, 200, 30, 14, C.md, C.sg, C.dk)
   const keyY = 95; const kw = 8; const kh = 18
   for (let k = 0; k < 22; k++) {
-    ctx.fillStyle = k % 7 === 2 || k % 7 === 6 ? C.md : C.lt
-    ctx.fillRect(40 + k * kw, keyY, kw - 1, kh); ctx.strokeStyle = C.dk; ctx.lineWidth = 0.5; ctx.strokeRect(40 + k * kw, keyY, kw - 1, kh)
+    ctx.fillStyle = k % 7 === 2 || k % 7 === 6 ? C.dk : C.lt
+    ctx.fillRect(40 + k * kw, keyY, kw - 1, kh); ctx.strokeStyle = C.md; ctx.lineWidth = 0.5; ctx.strokeRect(40 + k * kw, keyY, kw - 1, kh)
   }
   for (let k = 0; k < 21; k++) {
-    if (k % 7 !== 2 && k % 7 !== 6) { ctx.fillStyle = C.dk; ctx.fillRect(42 + k * kw + kw * 0.6, keyY, kw * 0.55, kh * 0.65) }
+    if (k % 7 !== 2 && k % 7 !== 6) { ctx.fillStyle = C.ink; ctx.fillRect(42 + k * kw + kw * 0.6, keyY, kw * 0.55, kh * 0.65) }
   }
   // Sheet music stand
   ctx.strokeStyle = C.md; ctx.lineWidth = 2
   ctx.beginPath(); ctx.moveTo(236, 190); ctx.lineTo(236, 120); ctx.stroke()
   ctx.beginPath(); ctx.moveTo(224, 190); ctx.lineTo(248, 190); ctx.stroke()
   ctx.fillStyle = C.lt; ctx.fillRect(218, 104, 36, 22); ctx.strokeStyle = C.ink; ctx.lineWidth = 1; ctx.strokeRect(218, 104, 36, 22)
-  // Music lines on stand
-  ctx.strokeStyle = C.dk; ctx.lineWidth = 0.5
+  ctx.strokeStyle = C.sg; ctx.lineWidth = 0.5
   for (let sl = 0; sl < 5; sl++) { ctx.beginPath(); ctx.moveTo(222, 108 + sl*3); ctx.lineTo(250, 108 + sl*3); ctx.stroke() }
   // Guitar silhouette (left wall)
-  ctx.fillStyle = C.sg
+  ctx.fillStyle = C.md
   ctx.beginPath(); ctx.ellipse(22, 32, 12, 16, 0, 0, Math.PI*2); ctx.fill()
   ctx.beginPath(); ctx.ellipse(22, 55, 9, 12, 0, 0, Math.PI*2); ctx.fill()
-  ctx.fillStyle = C.md; ctx.fillRect(20, 32, 4, 26); ctx.fillRect(21, 16, 2, 20)
+  ctx.fillStyle = C.sg; ctx.fillRect(20, 32, 4, 26); ctx.fillRect(21, 16, 2, 20)
   ctx.strokeStyle = C.ink; ctx.lineWidth = 0.8
   ctx.beginPath(); ctx.ellipse(22, 32, 12, 16, 0, 0, Math.PI*2); ctx.stroke()
   ctx.beginPath(); ctx.ellipse(22, 55, 9, 12, 0, 0, Math.PI*2); ctx.stroke()
-  // Guitar strings
-  ctx.strokeStyle = C.lt; ctx.globalAlpha = 0.30; ctx.lineWidth = 0.5
+  ctx.strokeStyle = C.md; ctx.globalAlpha = 0.40; ctx.lineWidth = 0.5
   for (let s = 0; s < 6; s++) { ctx.beginPath(); ctx.moveTo(22 - 2 + s*0.8, 16); ctx.lineTo(22 - 2 + s*0.8, 67); ctx.stroke() }
   ctx.globalAlpha = 1
   // Amp (left floor)
@@ -583,29 +581,28 @@ function _drawMusic(ctx, C) {
   ctx.fillStyle = C.sg; ctx.beginPath(); ctx.arc(46, 156, 18, 0, Math.PI*2); ctx.fill()
   ctx.fillStyle = C.dk; ctx.beginPath(); ctx.arc(46, 156, 10, 0, Math.PI*2); ctx.fill()
   ctx.strokeStyle = C.ink; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(46, 156, 18, 0, Math.PI*2); ctx.stroke()
-  // Volume knobs on amp
   for (let kn = 0; kn < 3; kn++) {
     ctx.fillStyle = C.md; ctx.beginPath(); ctx.arc(25 + kn * 16, 192, 4, 0, Math.PI*2); ctx.fill()
     ctx.strokeStyle = C.dk; ctx.lineWidth = 0.5; ctx.beginPath(); ctx.arc(25 + kn * 16, 192, 4, 0, Math.PI*2); ctx.stroke()
   }
   // Mic stand (center)
-  ctx.strokeStyle = C.sg; ctx.lineWidth = 3
+  ctx.strokeStyle = C.md; ctx.lineWidth = 3
   ctx.beginPath(); ctx.moveTo(168, 194); ctx.lineTo(168, 122); ctx.stroke()
   ctx.lineWidth = 2
   ctx.beginPath(); ctx.moveTo(168, 194); ctx.lineTo(152, 206); ctx.stroke()
   ctx.beginPath(); ctx.moveTo(168, 194); ctx.lineTo(184, 206); ctx.stroke()
-  ctx.fillStyle = C.lt; ctx.beginPath(); ctx.ellipse(168, 114, 8, 14, 0, 0, Math.PI*2); ctx.fill()
+  ctx.fillStyle = C.sg; ctx.beginPath(); ctx.ellipse(168, 114, 8, 14, 0, 0, Math.PI*2); ctx.fill()
   ctx.strokeStyle = C.ink; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(168, 114, 8, 14, 0, 0, Math.PI*2); ctx.stroke()
   ctx.strokeStyle = C.dk; ctx.lineWidth = 0.5
   for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.moveTo(161, 102 + i * 6); ctx.lineTo(175, 102 + i * 6); ctx.stroke() }
   // Speaker stack (right)
   _box3d(ctx, 258, 190, 54, 58, 8, C.md, C.sg, C.dk)
-  _box3d(ctx, 261, 133, 48, 22, 6, C.dk, C.md, '#0a0a0a')
+  _box3d(ctx, 261, 133, 48, 22, 6, C.dk, C.md, C.sg)
   ctx.fillStyle = C.sg; ctx.beginPath(); ctx.arc(285, 144, 14, 0, Math.PI*2); ctx.fill()
   ctx.fillStyle = C.dk; ctx.beginPath(); ctx.arc(285, 144, 7, 0, Math.PI*2); ctx.fill()
   ctx.strokeStyle = C.ink; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(285, 144, 14, 0, Math.PI*2); ctx.stroke()
-  // Stool at piano
-  _box3d(ctx, 128, 172, 30, 10, 8, C.dk, C.md, '#0a0a0a')
+  // Stool
+  _box3d(ctx, 128, 172, 30, 10, 8, C.dk, C.md, C.sg)
   ctx.fillStyle = C.sg; ctx.beginPath(); ctx.ellipse(143, 168, 15, 6, 0, 0, Math.PI*2); ctx.fill()
   ctx.strokeStyle = C.ink; ctx.lineWidth = 0.5; ctx.beginPath(); ctx.ellipse(143, 168, 15, 6, 0, 0, Math.PI*2); ctx.stroke()
 }
@@ -1104,25 +1101,26 @@ export function placeSprite(normie, sceneEl) {
   removeSprite(normie.id)
   if (!sceneEl) return
 
+  const isOutdoor = sceneEl.classList.contains('outdoor-wrap')
+  const scale = isOutdoor ? OUTDOOR_NORMIE_SCALE : NORMIE_SCALE
+
   const cvs = document.createElement('canvas')
   cvs.id = `sprite-${normie.id}`
   cvs.className = 'normie-sprite'
-  cvs.width  = Math.round(SPRITE_W * NORMIE_SCALE)
-  cvs.height = Math.round(SPRITE_H * NORMIE_SCALE)
+  cvs.width  = Math.round(SPRITE_W * scale)
+  cvs.height = Math.round(SPRITE_H * scale)
   cvs.style.cssText = `position:absolute;cursor:pointer;image-rendering:pixelated;z-index:10`
 
-  const isOutdoor = sceneEl.classList.contains('outdoor-wrap')
   const container = isOutdoor
     ? sceneEl.querySelector('.out-objects') || sceneEl
     : sceneEl.querySelector('.room-scene') || sceneEl
 
   let startX, startY
   if (isOutdoor) {
-    // X is a percentage of scene width — keeps things responsive
     startX = 6 + Math.random() * 88
     startY = OUTDOOR_FEET_Y
     cvs.style.left   = startX.toFixed(1) + '%'
-    cvs.style.bottom = startY + 'px'
+    cvs.style.bottom = startY.toFixed(1) + 'px'
     cvs.style.top    = 'auto'
   } else {
     startX = 4 + Math.random() * (88 - SPRITE_W_PCT)
@@ -1138,7 +1136,7 @@ export function placeSprite(normie, sceneEl) {
     cvs, sceneEl,
     x: startX,   targetX: startX,
     y: startY,   targetY: startY,
-    isOutdoor,
+    isOutdoor,   scale,
     dir: 'right',
     walkPhase: 0,
     zzzPhase: Math.random() * Math.PI * 2,
@@ -1148,7 +1146,6 @@ export function placeSprite(normie, sceneEl) {
   }
   spriteState.set(normie.id, ss)
 
-  // Point immediately toward activity spot for non-walk activities
   if (!isOutdoor && !WALK_ACTS.has(normie.activity)) {
     const spot = _getSpot(normie, ss)
     if (spot) { ss.targetX = spot.x; ss.targetY = spot.y }
@@ -1185,29 +1182,32 @@ export function setSpriteScene(normie, newSceneEl) {
   const ss = spriteState.get(normie.id)
   if (!ss || !newSceneEl) return
   ss.cvs.remove()
-  ss.sceneEl  = newSceneEl  // must set BEFORE _getSpot
+  ss.sceneEl   = newSceneEl
   ss.isOutdoor = newSceneEl.classList.contains('outdoor-wrap')
-  ss._atSpot  = false
+  ss.scale     = ss.isOutdoor ? OUTDOOR_NORMIE_SCALE : NORMIE_SCALE
+  ss._atSpot   = false
   ss._moveTimer = 0
+
+  // Resize the canvas to match the new scale
+  ss.cvs.width  = Math.round(SPRITE_W * ss.scale)
+  ss.cvs.height = Math.round(SPRITE_H * ss.scale)
 
   const container = ss.isOutdoor
     ? newSceneEl.querySelector('.out-objects') || newSceneEl
     : newSceneEl.querySelector('.room-scene') || newSceneEl
 
   if (ss.isOutdoor) {
-    // Enter from left or right edge (percentages of scene width)
     ss.x = Math.random() < 0.5 ? -8 : 105
     ss.y = OUTDOOR_FEET_Y
     ss.targetX = 10 + Math.random() * 80
     ss.targetY = OUTDOOR_FEET_Y
     ss.cvs.style.left   = ss.x.toFixed(1) + '%'
-    ss.cvs.style.bottom = ss.y + 'px'
+    ss.cvs.style.bottom = ss.y.toFixed(1) + 'px'
     ss.cvs.style.top    = 'auto'
     ss.cvs.style.width  = ''
     ss.cvs.style.height = ''
     container.style.position = 'relative'
   } else {
-    // Enter from left or right room edge
     ss.x = Math.random() < 0.5 ? -20 : 90
     ss.y = 6 + Math.random() * 6
     if (!WALK_ACTS.has(normie.activity)) {
@@ -1224,7 +1224,7 @@ export function setSpriteScene(normie, newSceneEl) {
     ss.cvs.style.width  = SPRITE_W_PCT + '%'
     ss.cvs.style.height = 'auto'
   }
-  ss.walkPhase = 0.1 // start walking in
+  ss.walkPhase = 0.1
   container.appendChild(ss.cvs)
 }
 
@@ -1316,18 +1316,19 @@ export function animateSprites(normieMap, nightAlpha, dt) {
 }
 
 function _redrawSprite(normie, ss, nightAlpha = 0) {
-  const ctx = ss.cvs.getContext('2d')
+  const ctx   = ss.cvs.getContext('2d')
+  const scale = ss.scale ?? NORMIE_SCALE
   ctx.clearRect(0, 0, ss.cvs.width, ss.cvs.height)
+
+  // Draw the sprite at scale
   ctx.save()
-  ctx.scale(NORMIE_SCALE, NORMIE_SCALE)
-
+  ctx.scale(scale, scale)
   const basePose    = ACTIVITY_META[normie.activity]?.pose || 'stand'
-  // While walking to a spot, show walk animation regardless of target pose
   const displayPose = (!ss._atSpot && ss.walkPhase > 0.01) ? 'walk' : basePose
-
   drawNormieSprite(ctx, normie.id, displayPose, ss.walkPhase, { direction: ss.dir })
   ctx.restore()
 
+  // Night tint
   const tint = ss.isOutdoor ? nightAlpha : nightAlpha * 0.15
   if (tint > 0) {
     ctx.fillStyle = `rgba(0,0,0,${(tint * 0.4).toFixed(3)})`

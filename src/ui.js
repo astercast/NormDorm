@@ -70,9 +70,9 @@ const _bubbles = new Map()   // normieId → { el, raf, dismiss }
 // Sprite canvas is 60×120 (after NORMIE_SCALE). Head top is at native row ~8,
 // which is ~12px from canvas top. We anchor the bubble's TAIL TIP a few px
 // above the head, then let the bubble extend upward from there.
-const HEAD_TOP_PX = 12   // distance from sprite canvas top to head top
-const TAIL_GAP    = 4    // px of breathing room between head and tail tip
-const TAIL_SIZE   = 5    // matches .chat-bubble::after border-width
+const HEAD_TOP_PX = 10   // distance from sprite canvas top to head top
+const TAIL_GAP    = 2    // tighter gap for closer bubble feel
+const TAIL_SIZE   = 4    // matches .chat-bubble::after border-width
 
 export function showChatBubble(normieId, text, dur = 3500) {
   // Clean up any existing bubble for this normie
