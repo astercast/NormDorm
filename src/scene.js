@@ -12,123 +12,134 @@ const ROOM_W = ROOM_TILES_W * TS   // 320px
 const ROOM_H = ROOM_TILES_H * TS   // 224px
 const WALL_H = TS * 2              // 64px
 
-const NORMIE_SCALE  = 1.5
+const NORMIE_SCALE  = 2.2          // larger sprites → always visible
 const SPRITE_W_PCT  = (SPRITE_W * NORMIE_SCALE) / ROOM_W * 100
 
 // Outdoor scene layout — keep in sync with .out-ground in style.css
-const OUTDOOR_GROUND_PX = 64                                  // ground band height (= horizon line)
+const OUTDOOR_GROUND_PX = 56                                  // ground band height (= horizon line)
 // How far above the canvas BOTTOM the sprite's feet are drawn:
 //   canvas_h = SPRITE_H * NORMIE_SCALE
 //   feet_y_in_canvas = SPRITE_FEET_Y * NORMIE_SCALE
 //   foot_offset = canvas_h - feet_y_in_canvas
-const FOOT_OFFSET_PX    = (SPRITE_H - SPRITE_FEET_Y) * NORMIE_SCALE   // 4 * 1.5 = 6
+const FOOT_OFFSET_PX    = (SPRITE_H - SPRITE_FEET_Y) * NORMIE_SCALE
 // Sprite `bottom` CSS so feet land exactly on the horizon line
-const OUTDOOR_FEET_Y    = OUTDOOR_GROUND_PX - FOOT_OFFSET_PX  // 64 - 6 = 58
+const OUTDOOR_FEET_Y    = OUTDOOR_GROUND_PX - FOOT_OFFSET_PX
 
 // Vanishing point (1-point perspective)
 const VP_X = ROOM_W / 2   // 160
 const VP_Y = WALL_H        // 64
 
-// ── Extended monochrome palettes ──────────────────────────────────────────
+// ── Monochrome palettes — all light-wall, white-floor so normies pop ────────
+// Palette key:
+//   wall/wHi/wLo  → wall surface shades
+//   floor/fLo     → floor shades
+//   ink           → sharpest dark (outlines, hair)
+//   dk            → very dark (furniture frames, shadows)
+//   md            → mid-gray (secondary furniture faces)
+//   sg             → soft gray (subtle fills, rugs, accents)
+//   lt            → near-white detail (highlights, pillow surfaces)
+//   screen        → monitor glass (deep blue-black)
+//   glass         → window glazing
 const MONO = {
   study: {
-    wall:'#d2d0ce', wHi:'#dedcda', wLo:'#c0bebb',
-    floor:'#e6e4e2', fLo:'#d6d4d2',
-    ink:'#0f0f0f', dk:'#2c2a28', md:'#545250', sg:'#8e8c8a', lt:'#c2c0be',
-    screen:'#424040', glass:'#cccac8',
+    wall:'#F5F3EF', wHi:'#FEFEFE', wLo:'#E8E5DE',
+    floor:'#FAFAF7', fLo:'#F1EEE7',
+    ink:'#16140E', dk:'#2A2820', md:'#6A6660', sg:'#B8B4AC', lt:'#E8E4DC',
+    screen:'#0A1828', glass:'#E4EFF8',
   },
   gaming: {
-    wall:'#181818', wHi:'#242424', wLo:'#0e0e0e',
-    floor:'#202020', fLo:'#161616',
-    ink:'#000000', dk:'#121212', md:'#3c3c3c', sg:'#686868', lt:'#989898',
-    screen:'#1c3048', glass:'#2a2a2a',
+    wall:'#F2F0EC', wHi:'#FAFAF8', wLo:'#E6E2DA',
+    floor:'#F8F6F2', fLo:'#EEEAE2',
+    ink:'#0E0C08', dk:'#1E1C16', md:'#505048', sg:'#A0A096', lt:'#D8D8D0',
+    screen:'#060E20', glass:'#D8E4F0',
   },
   chill: {
-    wall:'#d6d4d2', wHi:'#e0dedc', wLo:'#c4c2c0',
-    floor:'#ebebeb', fLo:'#dedcda',
-    ink:'#111111', dk:'#363432', md:'#5e5c5a', sg:'#929090', lt:'#c6c4c2',
-    screen:'#383636', glass:'#d0cecc',
+    wall:'#F6F4F0', wHi:'#FEFEFE', wLo:'#E9E6DE',
+    floor:'#FBFAF6', fLo:'#F2EFE8',
+    ink:'#181410', dk:'#2E2A22', md:'#6C6860', sg:'#B4B0A8', lt:'#E6E2D8',
+    screen:'#101010', glass:'#E8EAE4',
   },
   gym: {
-    wall:'#b6b4b2', wHi:'#c4c2c0', wLo:'#a4a2a0',
-    floor:'#d2d0ce', fLo:'#c0bebb',
-    ink:'#080808', dk:'#282624', md:'#504e4c', sg:'#828080', lt:'#b4b2b0',
-    screen:'#343232', glass:'#b0aeac',
+    wall:'#F4F3EF', wHi:'#FCFCFA', wLo:'#E8E5DC',
+    floor:'#F9F8F4', fLo:'#F0EDE4',
+    ink:'#141210', dk:'#262420', md:'#606059', sg:'#AEAAA2', lt:'#E2DEDA',
+    screen:'#141414', glass:'#DDE6EE',
   },
   library: {
-    wall:'#c6c2be', wHi:'#d4d0cc', wLo:'#b4b0ac',
-    floor:'#dedad6', fLo:'#cecac6',
-    ink:'#0e0c0a', dk:'#302c28', md:'#565250', sg:'#8a8680', lt:'#bcb8b4',
-    screen:'#3c3830', glass:'#c4c0bc',
+    wall:'#F7F5F1', wHi:'#FEFEFE', wLo:'#EAE7DE',
+    floor:'#FAF8F4', fLo:'#F1EDE5',
+    ink:'#1A1810', dk:'#2E2C22', md:'#726E64', sg:'#B8B4AA', lt:'#E6E2D6',
+    screen:'#181408', glass:'#EAE4D8',
   },
   music: {
-    wall:'#1c1c1c', wHi:'#282828', wLo:'#121212',
-    floor:'#242424', fLo:'#1a1a1a',
-    ink:'#000000', dk:'#161616', md:'#3e3e3e', sg:'#6c6c6c', lt:'#9c9c9c',
-    screen:'#2a2a2a', glass:'#282828',
+    wall:'#F3F1EE', wHi:'#FBFAF8', wLo:'#E5E2DA',
+    floor:'#F8F6F2', fLo:'#EFECE4',
+    ink:'#161410', dk:'#2A2820', md:'#686460', sg:'#B0ACA4', lt:'#E4E0D8',
+    screen:'#0C0C0C', glass:'#E6E4DC',
   },
   kitchen: {
-    wall:'#e2e0de', wHi:'#ebebeb', wLo:'#d2d0ce',
-    floor:'#f0eeec', fLo:'#e4e2e0',
-    ink:'#101010', dk:'#383634', md:'#646260', sg:'#9a9896', lt:'#d0cecc',
-    screen:'#484644', glass:'#e0dedc',
+    wall:'#F8F7F4', wHi:'#FFFFFF', wLo:'#ECE9E2',
+    floor:'#FAFAF6', fLo:'#F3F0E8',
+    ink:'#1A1816', dk:'#2E2C28', md:'#686460', sg:'#B4B0A8', lt:'#E8E4DC',
+    screen:'#1A1816', glass:'#E8EDEA',
   },
   art: {
-    wall:'#d0cece', wHi:'#dcdada', wLo:'#bebcba',
-    floor:'#eceae8', fLo:'#dedad8',
-    ink:'#111111', dk:'#302e2c', md:'#565452', sg:'#8c8a88', lt:'#c0bebc',
-    screen:'#464442', glass:'#d4d2d0',
+    wall:'#F5F4F0', wHi:'#FEFEFE', wLo:'#E8E5DC',
+    floor:'#FAF8F4', fLo:'#F0EDE4',
+    ink:'#161410', dk:'#2C2A22', md:'#6A6660', sg:'#B0ACA4', lt:'#E4E0D8',
+    screen:'#161410', glass:'#E6E4DC',
   },
   bedroom: {
-    wall:'#d4d2d0', wHi:'#dedcda', wLo:'#c2c0be',
-    floor:'#eae8e6', fLo:'#dad8d6',
-    ink:'#111111', dk:'#343230', md:'#5e5c5a', sg:'#929090', lt:'#c4c2c0',
-    screen:'#404040', glass:'#d2d0ce',
+    wall:'#F7F5F2', wHi:'#FEFEFE', wLo:'#EAE8E0',
+    floor:'#FBFAF6', fLo:'#F2F0E8',
+    ink:'#181614', dk:'#2C2A26', md:'#6A6864', sg:'#B4B0AC', lt:'#E4E2DC',
+    screen:'#181614', glass:'#EAE8DC',
   },
 }
 
 // ── Drawing primitives ─────────────────────────────────────────────────────
 
 function _base(ctx, C) {
-  // Wall
+  // Wall — clean flat fill with a single soft top-edge light
   ctx.fillStyle = C.wall
   ctx.fillRect(0, 0, ROOM_W, WALL_H)
+
+  // Subtle top-edge brightening (like ceiling light wash)
   const wGrad = ctx.createLinearGradient(0, 0, 0, WALL_H)
-  wGrad.addColorStop(0, 'rgba(255,255,255,0.09)')
-  wGrad.addColorStop(1, 'rgba(0,0,0,0.14)')
+  wGrad.addColorStop(0, 'rgba(255,255,255,0.14)')
+  wGrad.addColorStop(1, 'rgba(0,0,0,0)')
   ctx.fillStyle = wGrad; ctx.fillRect(0, 0, ROOM_W, WALL_H)
 
-  // Floor
+  // Floor — slightly warmer/different from wall so depth reads
   ctx.fillStyle = C.floor
   ctx.fillRect(0, WALL_H, ROOM_W, ROOM_H - WALL_H)
-  const fGrad = ctx.createLinearGradient(0, WALL_H, 0, ROOM_H)
-  fGrad.addColorStop(0, 'rgba(0,0,0,0.10)')
-  fGrad.addColorStop(0.5, 'rgba(0,0,0,0.03)')
+
+  // Floor front-edge vignette (makes floor feel grounded)
+  const fGrad = ctx.createLinearGradient(0, ROOM_H - 30, 0, ROOM_H)
+  fGrad.addColorStop(0, 'rgba(0,0,0,0)')
   fGrad.addColorStop(1, 'rgba(0,0,0,0.06)')
-  ctx.fillStyle = fGrad; ctx.fillRect(0, WALL_H, ROOM_W, ROOM_H - WALL_H)
+  ctx.fillStyle = fGrad; ctx.fillRect(0, ROOM_H - 30, ROOM_W, 30)
 
-  // Edge ambient occlusion (left/right walls)
-  const lSh = ctx.createLinearGradient(0, 0, 28, 0)
-  lSh.addColorStop(0, 'rgba(0,0,0,0.28)'); lSh.addColorStop(1, 'rgba(0,0,0,0)')
-  ctx.fillStyle = lSh; ctx.fillRect(0, 0, 28, ROOM_H)
-  const rSh = ctx.createLinearGradient(ROOM_W - 28, 0, ROOM_W, 0)
-  rSh.addColorStop(0, 'rgba(0,0,0,0)'); rSh.addColorStop(1, 'rgba(0,0,0,0.22)')
-  ctx.fillStyle = rSh; ctx.fillRect(ROOM_W - 28, 0, 28, ROOM_H)
+  // Wall-floor junction shadow (the most important depth line)
+  ctx.fillStyle = 'rgba(0,0,0,0.10)'; ctx.fillRect(0, WALL_H - 3, ROOM_W, 5)
 
-  // Ceiling → floor shadow
-  const cSh = ctx.createLinearGradient(0, WALL_H, 0, WALL_H + 24)
-  cSh.addColorStop(0, 'rgba(0,0,0,0.22)'); cSh.addColorStop(1, 'rgba(0,0,0,0)')
-  ctx.fillStyle = cSh; ctx.fillRect(0, WALL_H, ROOM_W, 24)
+  // Skirting board
+  ctx.fillStyle = C.lt
+  ctx.fillRect(0, WALL_H - 7, ROOM_W, 5)
 
-  // Corner darkening (where wall meets floor)
-  ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fillRect(0, WALL_H - 4, ROOM_W, 8)
-
-  // Skirting board + ceiling trim
-  ctx.fillStyle = C.lt; ctx.fillRect(0, WALL_H - 7, ROOM_W, 5)
+  // Crisp boundary lines
   ctx.fillStyle = C.ink
-  ctx.fillRect(0, WALL_H - 2, ROOM_W, 2)
-  ctx.fillRect(0, 0, ROOM_W, 2)
-  ctx.fillRect(0, ROOM_H - 2, ROOM_W, 2)
+  ctx.fillRect(0, WALL_H - 2, ROOM_W, 2)   // wall/floor seam
+  ctx.fillRect(0, 0, ROOM_W, 1)             // ceiling line
+  ctx.fillRect(0, ROOM_H - 1, ROOM_W, 1)   // floor bottom
+
+  // Side-wall shadows (thin, enough for depth without muddying white)
+  const lSh = ctx.createLinearGradient(0, 0, 16, 0)
+  lSh.addColorStop(0, 'rgba(0,0,0,0.12)'); lSh.addColorStop(1, 'rgba(0,0,0,0)')
+  ctx.fillStyle = lSh; ctx.fillRect(0, 0, 16, ROOM_H)
+  const rSh = ctx.createLinearGradient(ROOM_W - 16, 0, ROOM_W, 0)
+  rSh.addColorStop(0, 'rgba(0,0,0,0)'); rSh.addColorStop(1, 'rgba(0,0,0,0.12)')
+  ctx.fillStyle = rSh; ctx.fillRect(ROOM_W - 16, 0, 16, ROOM_H)
 }
 
 // Floor textures ────────────────────────────────────────────────────────────
@@ -994,7 +1005,7 @@ function _buildOutdoorDOM(room) {
   strip.className = 'room-strip outdoor-strip'
   strip.innerHTML = `
     <span class="rs-name">The Quad</span>
-    <span class="rs-occ" id="occ-outdoor">0 outside</span>`
+    <span class="rs-occ" id="occ-outdoor">0 in quad</span>`
   wrap.appendChild(strip)
 
   const scene = document.createElement('div')
@@ -1360,10 +1371,10 @@ export function updateOccupancy(normies) {
   for (const [loc, count] of Object.entries(counts)) {
     const el = document.getElementById(`occ-${loc}`)
     if (!el) continue
-    el.textContent = loc === 'outdoor' ? `${count} outside` : `${count}/4`
+    el.textContent = loc === 'outdoor' ? `${count} in quad` : `${count}/4`
   }
   document.querySelectorAll('[id^="occ-"]').forEach(el => {
     const loc = el.id.replace('occ-', '')
-    if (!counts[loc]) el.textContent = loc === 'outdoor' ? '0 outside' : '0/4'
+    if (!counts[loc]) el.textContent = loc === 'outdoor' ? '0 in quad' : '0/4'
   })
 }

@@ -352,7 +352,7 @@ export class App {
             <div class="msb-divider"></div>
             <div class="msb-item">
               <span class="msb-val" id="msb-outside">0</span>
-              <span class="msb-lbl">OUTSIDE</span>
+              <span class="msb-lbl">IN QUAD</span>
             </div>
             <button class="msb-sidebar-toggle" id="msb-sidebar-toggle" aria-label="Toggle info panel">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="3" width="12" height="1.5" rx=".75" fill="currentColor"/><rect x="2" y="7.25" width="12" height="1.5" rx=".75" fill="currentColor"/><rect x="2" y="11.5" width="12" height="1.5" rx=".75" fill="currentColor"/></svg>
@@ -912,11 +912,15 @@ export class App {
 
 function _freshNormie(data, personality, idx, rooms) {
   const indoorRooms = rooms.filter(r => r.typeId !== 'outdoor')
-  const defRoom     = indoorRooms[idx % Math.max(indoorRooms.length, 1)]?.id || 'outdoor'
+  const defRoom     = indoorRooms[idx % Math.max(indoorRooms.length, 1)]?.id
+                      || rooms[0]?.id || 'outdoor'
+  // Always start in an indoor room — pick an activity valid there
   const { activity, location } = pickActivity(freshNeeds(), personality, defRoom, rooms)
+  // Guard: if pickActivity still resolves to outdoor, override it
+  const startLocation = (location === 'outdoor') ? defRoom : (location || defRoom)
   return {
     ...data, personality, needs: freshNeeds(), activity,
     activityTicksLeft: activityDuration(activity),
-    location: location || defRoom, chatCooldown: 0, _warned: {},
+    location: startLocation, chatCooldown: 0, _warned: {},
   }
 }

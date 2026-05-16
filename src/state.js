@@ -62,8 +62,7 @@ export function pickActivity(needs, personality, currentLocation, rooms) {
     }
     // Slight preference for current room's activities
     if (availableActivities?.includes(act)) score += 5
-    // Outdoor bias during "daytime" (just random bonus)
-    if (act === 'outside') score += 8
+    // No outdoor bias — normies should start and stay in rooms naturally
     candidates.push({ activity:act, location:targetLoc, score: score * (0.7 + Math.random() * 0.6) })
   }
 

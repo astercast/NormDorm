@@ -612,7 +612,7 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
 @keyframes loadBounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
 
 /* ══════════════════════════════════════════════════════════════════
-   DORM BUILDING
+   DORM BUILDING — white rooms, crisp cards, large sprites
    ══════════════════════════════════════════════════════════════════ */
 
 .dorm-building { display: flex; flex-direction: column; gap: 14px }
@@ -620,38 +620,48 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
 .room-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
+  gap: 10px;
 }
 
+/* Each room card — pure white, thin dark border, NO background so canvas shows */
 .room-wrap {
   position: relative;
-  background: #e8e8e8;
-  border: 1px solid #b4b4b4;
+  background: #FAFAF8;
+  border: 1px solid #D8D4CC;
   border-radius: var(--radius);
   overflow: hidden;
   color-scheme: light;
-  box-shadow: 0 2px 8px rgba(0,0,0,.07), 0 1px 2px rgba(0,0,0,.05);
-  transition: box-shadow .25s ease, transform .25s ease;
+  box-shadow: 0 1px 4px rgba(0,0,0,.06);
+  transition: box-shadow .2s ease, transform .2s ease;
 }
 .room-wrap:hover {
-  box-shadow: 0 6px 24px rgba(0,0,0,.12), 0 2px 6px rgba(0,0,0,.08);
-  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0,0,0,.10);
+  transform: translateY(-1px);
 }
 
+/* Room header strip — minimal, barely-there */
 .room-strip {
   display: flex; align-items: center; gap: 6px;
-  padding: 5px 10px;
-  background: rgba(220,220,220,.9);
-  border-bottom: 1px solid #b8b8b8;
-  font-size: 11px; font-weight: 600;
+  padding: 4px 10px;
+  background: rgba(255,255,255,.92);
+  border-bottom: 1px solid #E0DDD6;
+  font-size: 10px; font-weight: 600;
   position: relative; z-index: 2;
   backdrop-filter: blur(4px);
 }
-.rs-icon { font-size: 12px }
-.rs-name { color: #1e1e1e; flex: 1; font-weight: 600; letter-spacing: .02em; font-size: 10px; text-transform: uppercase }
-.rs-occ  { color: #5a5a5a; font-size: 10px; font-family: var(--font-mono); font-weight: 500 }
+.rs-icon { font-size: 11px }
+.rs-name {
+  color: #1A1816; flex: 1;
+  font-weight: 700; letter-spacing: .08em;
+  font-size: 9px; text-transform: uppercase;
+}
+.rs-occ  {
+  color: #888480; font-size: 9px;
+  font-family: var(--font-mono); font-weight: 500;
+}
 
-.room-scene { position: relative; overflow: hidden }
+/* The canvas fills the entire card; must be white-bg rendered */
+.room-scene { position: relative; overflow: hidden; background: #FAFAF8 }
 .room-canvas {
   display: block; width: 100%;
   aspect-ratio: 320 / 224;
@@ -659,93 +669,104 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
   image-rendering: crisp-edges;
 }
 
-/* ── THE QUAD (outdoor) ─────────────────────────────────────────
-   Single horizon line at 64px. Sprite feet land exactly on the line.
-   ──────────────────────────────────────────────────────────────── */
+/* ── THE QUAD (outdoor) ─────────────────────────────────────────────
+   Clean exterior — white sky, soft ground, precise props.
+   ──────────────────────────────────────────────────────────────────── */
 .outdoor-wrap {
-  background: #d8d8d8;
-  border: 1px solid #b4b4b4;
+  background: #F8F7F4;
+  border: 1px solid #D8D4CC;
   border-radius: var(--radius);
   overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,.06);
 }
 .outdoor-strip {
-  background: #ececec;
-  border-bottom: 1px solid #c8c8c8;
+  background: rgba(255,255,255,.92);
+  border-bottom: 1px solid #E0DDD6;
 }
 .outdoor-scene {
   position: relative;
-  height: 240px;
+  height: 200px;
   overflow: hidden;
   isolation: isolate;
 }
 
-/* Sky — pure flat tone with a hint of vertical gradient, no busy lines */
+/* Sky — soft white/cream by day, dark blue at night */
 .out-sky {
   position: absolute; inset: 0;
-  background: linear-gradient(180deg, #d4d4d4 0%, #cccccc 70%, #c2c2c2 100%);
-  transition: background 2.5s ease;
+  background: linear-gradient(180deg, #E8E6E2 0%, #F0EEE8 65%, #E8E4DC 100%);
+  transition: background 3s ease;
 }
-.out-sky[data-time="dusk"]  { background: linear-gradient(180deg, #8a8a8a 0%, #7e7e7e 60%, #6e6e6e 100%) }
-.out-sky[data-time="night"] { background: linear-gradient(180deg, #161618 0%, #1c1c1f 60%, #1f1f23 100%) }
+.out-sky[data-time="dusk"]  {
+  background: linear-gradient(180deg, #888480 0%, #A09C96 60%, #908C86 100%);
+}
+.out-sky[data-time="night"] {
+  background: linear-gradient(180deg, #0E0E10 0%, #141418 60%, #181820 100%);
+}
 
+/* Sun — warm off-white circle */
 .out-sun {
-  position: absolute; right: 9%; top: 22px;
-  width: 18px; height: 18px; border-radius: 50%;
-  background: #f0f0f0;
-  box-shadow: 0 0 24px 6px rgba(240,240,240,.35);
+  position: absolute; right: 8%; top: 18px;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: #F0EBE0;
+  box-shadow: 0 0 32px 8px rgba(240,235,224,.3);
   transition: opacity 1.5s ease;
 }
+/* Moon — cool with a crater shadow */
 .out-moon {
-  position: absolute; right: 9%; top: 22px;
-  width: 14px; height: 14px; border-radius: 50%;
-  background: #e8e8ec;
-  box-shadow: inset -4px -1px 0 0 #b4b4ba, 0 0 12px 2px rgba(232,232,236,.18);
+  position: absolute; right: 8%; top: 20px;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: #D8D4CC;
+  box-shadow: inset -4px -2px 0 0 #A8A4A0, 0 0 12px 2px rgba(216,212,204,.2);
   opacity: 0;
   transition: opacity 2.5s ease;
 }
-
+/* Stars */
 .out-star {
   position: absolute; width: 2px; height: 2px;
   border-radius: 50%; background: #ffffff;
   opacity: 0;
-  transition: opacity 2s;
   animation: outStarTwinkle 4s ease-in-out infinite;
 }
-@keyframes outStarTwinkle { 0%,100%{opacity:1} 50%{opacity:.25} }
-.out-sky[data-time="night"] .out-star { opacity: .85 }
-.out-sky[data-time="dusk"]  .out-star { opacity: .25 }
+@keyframes outStarTwinkle { 0%,100%{opacity:0.9} 50%{opacity:0.2} }
+.out-sky[data-time="night"] .out-star { opacity: .8 }
+.out-sky[data-time="dusk"]  .out-star { opacity: .15 }
 
-/* Distant silhouette */
+/* Distant city silhouette */
 .out-skyline {
-  position: absolute; left: 0; right: 0; bottom: 64px;
-  display: flex; align-items: flex-end; gap: 4px;
-  padding: 0 4%;
-  opacity: .12;
+  position: absolute; left: 0; right: 0; bottom: 56px;
+  display: flex; align-items: flex-end; gap: 3px;
+  padding: 0 3%;
+  opacity: .08;
   z-index: 0;
 }
 .out-skyline-bldg {
-  flex: 1; background: #4a4a4a;
+  flex: 1; background: #1A1816;
   border-top-left-radius: 1px; border-top-right-radius: 1px;
 }
-.out-sky[data-time="night"] ~ .out-skyline,
-.outdoor-scene .out-sky[data-time="night"] + .out-ground + .out-horizon + .out-objects { /* dummy chain */ }
 
-/* Ground band — flat, single tone */
+/* Ground — same warm off-white as floor of rooms */
 .out-ground {
-  position: absolute; bottom: 0; left: 0; right: 0; height: 64px;
-  background: #a4a4a4;
-  transition: background 2.5s ease;
+  position: absolute; bottom: 0; left: 0; right: 0; height: 56px;
+  background: #EDEAE2;
+  transition: background 3s ease;
 }
-.out-ground[data-time="night"] { background: #2c2c30 }
+.out-ground[data-time="night"] { background: #1A1A1C }
 
-/* Crisp horizon line at the top of ground (sprite feet land here) */
+/* Ground path (decorative) */
+.out-ground::after {
+  content: '';
+  position: absolute;
+  left: 35%; right: 35%; top: 50%; height: 1px;
+  background: rgba(0,0,0,.06);
+}
+
+/* Horizon seam */
 .out-horizon {
-  position: absolute; bottom: 64px; left: 0; right: 0; height: 1px;
-  background: rgba(0,0,0,.18);
+  position: absolute; bottom: 56px; left: 0; right: 0; height: 1px;
+  background: rgba(0,0,0,.12);
   z-index: 1;
   pointer-events: none;
 }
-.out-sky[data-time="night"] ~ .out-horizon { background: rgba(255,255,255,.08) }
 
 /* Sprite/object container */
 .out-objects {
@@ -755,75 +776,80 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
 }
 .out-objects > * { pointer-events: auto }
 
-/* Trees — pure silhouettes, percentage-positioned, anchored at horizon */
+/* Trees — clean geometric silhouettes */
 .out-tree {
-  position: absolute; bottom: 64px;
+  position: absolute; bottom: 56px;
   transform: translateX(-50%);
   display: flex; flex-direction: column; align-items: center;
   z-index: 2;
 }
 .ot-oak  .oak-canopy {
-  width: 36px; height: 36px; border-radius: 50%;
-  background: #6a6a6a;
+  width: 32px; height: 32px; border-radius: 50%;
+  background: #2A2820;
 }
 .ot-oak  .oak-trunk {
-  width: 5px; height: 12px; background: #4a4a4a; margin-top: -3px;
+  width: 5px; height: 12px; background: #1A1816; margin-top: -2px;
 }
-.ot-pine .pine-l1 { width: 12px; height: 12px; background: #5a5a5a; clip-path: polygon(50% 0,0 100%,100% 100%) }
-.ot-pine .pine-l2 { width: 18px; height: 14px; background: #606060; clip-path: polygon(50% 0,0 100%,100% 100%); margin-top: -4px }
-.ot-pine .pine-l3 { width: 24px; height: 16px; background: #686868; clip-path: polygon(50% 0,0 100%,100% 100%); margin-top: -5px }
-.ot-pine .pine-trunk { width: 4px; height: 10px; background: #4a4a4a; margin-top: -1px }
+.ot-pine .pine-l1 { width: 10px; height: 10px; background: #2A2820; clip-path: polygon(50% 0,0 100%,100% 100%) }
+.ot-pine .pine-l2 { width: 16px; height: 13px; background: #242018; clip-path: polygon(50% 0,0 100%,100% 100%); margin-top: -3px }
+.ot-pine .pine-l3 { width: 22px; height: 15px; background: #1E1C14; clip-path: polygon(50% 0,0 100%,100% 100%); margin-top: -4px }
+.ot-pine .pine-trunk { width: 4px; height: 9px; background: #1A1816; margin-top: 0 }
 
-.out-sky[data-time="night"] ~ .out-ground ~ .out-objects .ot-oak .oak-canopy,
+.out-sky[data-time="night"] ~ .out-ground ~ .out-objects .ot-oak  .oak-canopy { background: #0E0E10 }
 .out-sky[data-time="night"] ~ .out-ground ~ .out-objects .ot-pine .pine-l1,
 .out-sky[data-time="night"] ~ .out-ground ~ .out-objects .ot-pine .pine-l2,
-.out-sky[data-time="night"] ~ .out-ground ~ .out-objects .ot-pine .pine-l3 { filter: brightness(.55) }
+.out-sky[data-time="night"] ~ .out-ground ~ .out-objects .ot-pine .pine-l3 { background: #0E0E10 }
 
-/* Benches — minimal silhouette */
+/* Bench — thin and precise */
 .out-bench {
-  position: absolute; bottom: 64px;
+  position: absolute; bottom: 56px;
   transform: translateX(-50%);
   display: flex; flex-direction: column; align-items: center; gap: 2px;
   z-index: 2;
 }
-.ob-seat { width: 40px; height: 4px; background: #6a6a6a; border-radius: 1px }
-.ob-legs { display: flex; gap: 28px }
-.ob-legs span { display:block; width: 3px; height: 7px; background: #4a4a4a }
+.ob-seat { width: 36px; height: 3px; background: #2A2820; border-radius: 1px }
+.ob-legs { display: flex; gap: 24px }
+.ob-legs span { display:block; width: 2px; height: 6px; background: #1A1816 }
 
-/* Street lamp — minimal silhouette with subtle glow at night */
+/* Lamp */
 .out-lamp {
-  position: absolute; bottom: 64px;
+  position: absolute; bottom: 56px;
   transform: translateX(-50%);
   display: flex; flex-direction: column; align-items: center;
   z-index: 2;
 }
 .ol-head {
-  width: 8px; height: 8px; border-radius: 50%;
-  background: #4a4a4a;
-  transition: background 1s, box-shadow 1s;
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #2A2820;
+  transition: background 1.5s, box-shadow 1.5s;
 }
-.ol-pole { width: 2px; height: 44px; background: #4a4a4a }
+.ol-pole { width: 2px; height: 40px; background: #2A2820 }
 .out-sky[data-time="night"] ~ .out-ground ~ .out-objects .ol-head {
-  background: #f4ecd0;
-  box-shadow: 0 0 12px 3px rgba(244,236,208,.5);
+  background: #F4EDDE;
+  box-shadow: 0 0 16px 4px rgba(244,237,222,.55), 0 -6px 20px 4px rgba(244,237,222,.2);
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   NORMIE SPRITES
+   NORMIE SPRITES — on white backgrounds, sprites need clear shadows
    ══════════════════════════════════════════════════════════════════ */
 .normie-sprite {
   image-rendering: pixelated; image-rendering: crisp-edges;
   cursor: pointer;
-  /* No background, no borders — transparent canvas */
   background: transparent !important;
   border: none; outline: none; box-shadow: none;
-  transition: transform .18s cubic-bezier(.34,1.56,.64,1);
+  /* Drop shadow helps sprites read against white walls */
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,.18));
+  transition: filter .18s ease, transform .18s cubic-bezier(.34,1.56,.64,1);
   transform-origin: bottom center;
 }
 .normie-sprite:hover {
-  filter: brightness(1.08) drop-shadow(0 4px 10px rgba(0,0,0,.32));
+  filter: drop-shadow(0 4px 12px rgba(0,0,0,.30)) brightness(1.05);
   z-index: 30 !important;
-  transform: scale(1.08) translateY(-3px);
+  transform: scale(1.1) translateY(-3px);
+}
+/* Agentic normies get a subtle glow */
+.normie-sprite.is-agentic {
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,.18)) drop-shadow(0 0 6px rgba(100,120,200,.4));
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -1454,9 +1480,7 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
     padding-top: 56px;
     transition: right .28s cubic-bezier(.22,.68,0,1.2);
   }
-  .dorm-sidebar.sidebar-open {
-    right: 0;
-  }
+  .dorm-sidebar.sidebar-open { right: 0 }
 
   /* Backdrop overlay when drawer is open */
   .dorm-sidebar.sidebar-open::before {
@@ -1470,14 +1494,15 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
 
   .detail-panel { right: 8px; bottom: 8px; width: calc(100vw - 16px); max-width: 300px }
   .safety-grid { grid-template-columns: 1fr }
-
-  /* Header: compress on tablet */
   .header { padding: 8px 16px }
   .header-link { display: none }
   .addr-chip { max-width: 120px }
+
+  /* Room grid: 2 columns on tablet */
+  .room-grid { grid-template-columns: repeat(2, 1fr) }
 }
 
-/* Mobile: single column rooms */
+/* Mobile: single column rooms — make them TALL so all normies show */
 @media (max-width: 600px) {
   .room-grid { grid-template-columns: 1fr }
   .notif-stack { right: 8px; bottom: 8px }
@@ -1486,13 +1511,14 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
   /* Tab labels short on very small screens */
   .tab-btn { font-size: 11px; padding: 7px 10px; gap: 4px }
 
-  /* Room cards taller so sprites are visible */
-  .room-card { min-height: 180px }
-  .room-scene { height: 160px !important }
+  /* Taller rooms on mobile so sprites are CLEARLY VISIBLE */
+  .room-canvas {
+    aspect-ratio: 320 / 200 !important;
+  }
   .outdoor-scene { height: 180px !important }
 
-  /* Sprites must be clickable — ensure adequate tap target */
-  canvas.normie-sprite { cursor: pointer }
+  /* Bigger sprite tap target */
+  canvas.normie-sprite { cursor: pointer; min-width: 44px; min-height: 44px }
 }
 
 @media (max-width: 500px) {
@@ -1504,7 +1530,7 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
   .connect-btns { flex-direction: column; align-items: center }
   .ach-toast { right: 8px; max-width: calc(100vw - 16px) }
 
-  /* Tab: icon only */
+  /* Tab: icon + shortened label */
   .tab-btn .tb-label { display: none }
   .tab-btn { padding: 8px 12px }
 
@@ -1512,4 +1538,8 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
   .combo-meter { padding: 6px 12px }
   .combo-label { font-size: 9px }
   .combo-val { font-size: 13px }
+
+  /* Wider rooms on tiny screens */
+  .dorm-main { padding: 10px 8px }
+  .room-grid { gap: 8px }
 }
