@@ -166,8 +166,99 @@ export const EVENT_TEMPLATES = {
   meditating:   (n)             => `${n} is meditating 🧘`,
 }
 
+// ── Room-contextual chat lines ─────────────────────────────────────────────
+// Two-tier lookup: ROOM_CHAT[roomType][activity] → string[]
+// Fallback chain: room+activity → room only → activity only → critical
+export const ROOM_CHAT = {
+  study: {
+    studying:   ["this proof is actually killing me","3 more chapters i promise","someone explain integration by parts","brain.exe has stopped","office hours were useless","my notes make no sense from last week","ok i actually get it now","pulling another all-nighter apparently"],
+    reading:    ["this book is insane btw","one more chapter i swear","annotating everything","author really said that huh"],
+    gaming:     ["just one match then i'll study","ok NOW i'll study","the desk is for gaming too","productivity speedrun any%"],
+    eating:     ["studying burns calories right","snack break mandatory","caffeine status: critical","can't think on an empty stomach"],
+    chatting:   ["did you get the notes from tuesday","what's on the exam exactly","how are you not panicking rn","collab session?","waiting for someone to start studying first"],
+    _room:      ["lamp life","the quiet hour","desk hours","academia","study szn"],
+  },
+  gaming: {
+    gaming:     ["one more match","they literally just hacked me","gg ez","this ping tho","carried the whole lobby","uninstalling and reinstalling","new meta just dropped","top diff no cap","stream worthy honestly"],
+    chatting:   ["ranked grind season","who's queuing","1v1 me","you're so bad at this game i love you","clutch city","spec me"],
+    studying:   ["studying between games counts","dual screen productivity","just kidding i'm watching a stream","ok but listen"],
+    eating:     ["dinner at the setup","eating between queues","hydration check","gamer fuel only"],
+    sleeping:   ["i'll sleep after this game","5am it is","worth it though","last game i promise"],
+    _room:      ["no sleep gang","ranked szn","the setup goes hard","monitor bright hours","gaming lounge"],
+  },
+  chill: {
+    chatting:   ["what are we watching","nobody agreed to this show","I'm not getting up for snacks","vibes are immaculate","this couch has a gravitational pull","hours passed somehow","this is genuinely relaxing","not moving, ever"],
+    reading:    ["found a good book on the shelf","couch reading is elite","this is better than the movie","page 200 already what"],
+    eating:     ["someone order something","snack situation is dire","who made this and why is it good","communal fridge raid"],
+    dancing:    ["no one was supposed to see that","accidental dance party","ok but this song though","the floor is mine apparently"],
+    gaming:     ["couch gaming hits different","casual mode only","we're all losing together","take turns or?"],
+    meditating: ["peace and quiet finally","vibe check: passing","clearing the backlog of thoughts","doing nothing professionally"],
+    _room:      ["good vibes only","chill hours","the lounge claims another victim","couch szn","energy: low, vibe: high"],
+  },
+  gym: {
+    exercising: ["leg day never ends","spotter?","almost didn't come","no pain no gain or whatever","last set i promise","form check?","PR incoming","motivation found in the parking lot","this is what I trained for","the gym is my therapy"],
+    chatting:   ["rest day socials","gym talk only","split advice needed","who's skipping today","accountability check"],
+    dancing:    ["cardio but make it fun","interpretive workout","the gym plays WHAT now","this is technically stretching"],
+    meditating: ["cool down mode","breathing exercises count","mindful gains","muscle recovery arc"],
+    showering:  ["post-workout clarity hits different","shower thought incoming","everything is solved in here","the best ideas happen now"],
+    _room:      ["getting gains","sweat session","iron therapy","no days off","this gym is undefeated"],
+  },
+  library: {
+    studying:   ["shh","finals energy in here","3 hours til close","this book is underrated btw","citations only","the silence is the feature","deep work mode activated","haven't blinked in an hour"],
+    reading:    ["found this gem","annotating extensively","the lore is insane","author is a genius or a maniac","re-reading this for the third time"],
+    meditating: ["libraries are sacred","the quiet is loud somehow","thinking thoughts","processing..."],
+    chatting:   ["notes comparison","whisper session","library gossip is the best gossip","post-study debrief"],
+    napping:    ["don't tell anyone","the chair is surprisingly comfortable","study nap is still a nap","recovery mode"],
+    sketching:  ["drawing what I'm reading","character illustrations","marginalia art","the books inspired this"],
+    _room:      ["silence is golden","archive mode","the stacks know","books over everything","reading hours"],
+  },
+  music: {
+    jamming:    ["this chord progression hits","can you play that again","the acoustics in here are fire","almost got it","this riff is living rent free","key change unlocked","session mode","we recorded something actually","i've been on this song for 2 hours"],
+    dancing:    ["can't not move to this","the room has good energy","freestyle only","the beat demands it"],
+    chatting:   ["collab energy","we should record this","what key is this in","you hear that progression","studio talk"],
+    sketching:  ["drawing to the music","synesthesia hours","the song looks like this"],
+    exercising: ["music room cardio","practice has footwork","rhythm is movement"],
+    _room:      ["studio mode","sound therapy","the music room never misses","vibrations only","one take wonder"],
+  },
+  kitchen: {
+    cooking:    ["who ate my leftovers","dining hall was closed so","ramen at 2am hits different","who used the last hot sauce","making enough for everyone","secret ingredient is spite","recipe from memory","this is either genius or terrible","the smoke alarm is shy today"],
+    eating:     ["finally something that isn't sad","communal kitchen W","tastes better at this hour","sharing is optional","this took 20 minutes or forever"],
+    chatting:   ["kitchen talk is the realest talk","everyone ends up in here","3am kitchen conversations","overheard something wild","kitchen counter council"],
+    walking:    ["just passing through","looking for snacks","assessing the situation","kitchen audit"],
+    _room:      ["fridge light hours","communal chaos","the kitchen lives","ramen republic","midnight snack arc"],
+  },
+  art: {
+    sketching:  ["the light in here","this brush is perfect","I've been staring at this canvas for an hour","it's abstract okay","the piece is telling me things","I just keep adding layers","is this done? I don't know","three hours passed somehow","the mess is the art","happy accident"],
+    meditating: ["art is meditation anyway","blank canvas energy","open mind open canvas","breathing before I begin"],
+    chatting:   ["art talk only","what do you see in this","destructive feedback welcome","comparing techniques","we should collab"],
+    reading:    ["art history deep dive","reference material","theory time","the masters knew something"],
+    dancing:    ["movement as art","embodied expression","the room as canvas","performance piece?"],
+    _room:      ["creative hours","the studio claims me","paint on everything","art is the point","chaos as method"],
+  },
+  bedroom: {
+    sleeping:   ["do not disturb","5 more minutes","processing the day","in another dimension rn","out cold","dream arc initiated"],
+    napping:    ["needed this","20 minutes max (it's been 3 hours)","recovery nap","the pillow wins"],
+    chatting:   ["can you please be quiet","what was that noise at 3am","who's leaving at 6am","dorm life check","this room has seen things"],
+    studying:   ["desk to bed pipeline","studying horizontal","last minute mode","room study counts","I work better here actually"],
+    gaming:     ["bed gaming is a lifestyle","portable setup wins","playing until I fall asleep","comfort slot"],
+    _room:      ["cozy hours","bedroom arc","the bed is calling","nap o'clock","recharge mode"],
+  },
+  outdoor: {
+    outside:    ["campus looks different at this hour","did you see that squirrel","it's not even that cold","the quad is actually beautiful","stars are insane tonight","air is different out here","I came out here to think","everyone's here or no one is","bench claims me","sitting outside for no reason but it helps"],
+    walking:    ["just walking around","clearing my head","spontaneous lap around campus","found a new path","the long way back"],
+    chatting:   ["quad talk hits different","accidental outdoor meeting","caught up with someone","the bench council convenes","impromptu hangout"],
+    exercising: ["outdoor workout unlocked","campus run time","track is empty at this hour","running towards nothing"],
+    eating:     ["outside eating is elite","dining al fresco","grass snacking","the picnic that wasn't planned"],
+    meditating: ["outdoor breathing","stars and thoughts","just being here","the sky is enormous actually"],
+    dancing:    ["empty quad dance party","someone saw me and I don't care","music in my head","freestyle in the open air"],
+    _room:      ["in the quad","touching grass","outdoor mode","fresh air arc","campus hours"],
+  },
+  critical:   ['someone help','low hp','empty everything','send food immediately','I need sleep NOW','everything is empty','cannot go on like this','critical condition','SOS','running on fumes'],
+}
+
+// Fallback activity-only lines (for rooms not in the table)
 export const CHAT_LINES = {
-  chatting:   ['sup','done the hw?','wifi is down AGAIN','ordered pizza','who ate my ramen','gm ser','wen mint','good vibes only','touch grass','late night grind','normie behavior tbh','still up?','based','anon pls'],
+  chatting:   ['sup','done the hw?','wifi is down AGAIN','ordered pizza','who ate my ramen','gm','good vibes only','late night grind','still up?','based'],
   outside:    ['nice out here','stargazing','moon looking fire','touching grass rn','this bench slaps'],
   gaming:     ['gg no re','trash lobby','clutch','griefed','skill diff','let me cook','L + ratio'],
   eating:     ['finally eating','ramen again','whose turn to cook','empty pantry','this slaps'],
@@ -181,3 +272,22 @@ export const CHAT_LINES = {
   reading:    ['one more chapter','this is actually good','shh'],
   critical:   ['im dying','send food','need sleep NOW','LOW HP','cant go on'],
 }
+
+// ── Daily challenge pool ────────────────────────────────────────────────────
+export const CHALLENGE_POOL = [
+  { id:'combo4',    icon:'🔥', desc:'Build a ×4 combo',              type:'maxCombo',    target:4,   reward:200 },
+  { id:'combo6',    icon:'💥', desc:'Build a ×6 combo',              type:'maxCombo',    target:6,   reward:350 },
+  { id:'feed3',     icon:'🍜', desc:'Feed a Normie 3 times',          type:'feed',        target:3,   reward:175 },
+  { id:'feed8',     icon:'🍽️', desc:'Feed Normies 8 times today',     type:'feed',        target:8,   reward:400 },
+  { id:'click50',   icon:'👆', desc:'Click 50 times',                 type:'clicks',      target:50,  reward:150 },
+  { id:'click200',  icon:'🤙', desc:'Click 200 times',                type:'clicks',      target:200, reward:600 },
+  { id:'coins300',  icon:'🪙', desc:'Earn 300 coins clicking',        type:'clickCoins',  target:300, reward:250 },
+  { id:'coins1000', icon:'💰', desc:'Earn 1,000 coins clicking',      type:'clickCoins',  target:1000,reward:750 },
+  { id:'allhappy',  icon:'😊', desc:'All Normies above 70% happy',    type:'allHappy',    target:1,   reward:300 },
+  { id:'allgreat',  icon:'🌟', desc:'All Normies above 85% happy',    type:'allGreat',    target:1,   reward:600 },
+  { id:'upgrade1',  icon:'⬆️', desc:'Buy an upgrade',                 type:'upgrades',    target:1,   reward:200 },
+  { id:'upgrade3',  icon:'🏗️', desc:'Buy 3 upgrades today',           type:'upgrades',    target:3,   reward:550 },
+  { id:'outside3',  icon:'🌳', desc:'Have 3 Normies outside at once', type:'outsideCount',target:3,   reward:300 },
+  { id:'maxcombo',  icon:'👑', desc:'Hit the maximum combo',          type:'maxCombo',    target:8,   reward:800 },
+  { id:'survive',   icon:'💪', desc:'Recover a Normie from critical', type:'recovered',   target:1,   reward:250 },
+]

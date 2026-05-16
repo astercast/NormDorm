@@ -875,6 +875,119 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
 .lb-setup-hint strong { color: var(--text2) }
 .lb-wrap { flex: 1; overflow-y: auto; background: var(--bg) }
 
+/* ── Agentic Normie ──────────────────────────────────────────────── */
+.normie-sprite.is-agentic {
+  animation: agenticPulse 2.5s ease-in-out infinite;
+}
+@keyframes agenticPulse {
+  0%,100% { filter: drop-shadow(0 0 6px rgba(0,210,255,0.45)) }
+  50%      { filter: drop-shadow(0 0 14px rgba(0,210,255,0.85)) drop-shadow(0 0 28px rgba(0,210,255,0.3)) }
+}
+
+/* Agentic badge in roster row */
+.roster-agentic-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #00d2ff; box-shadow: 0 0 8px #00d2ff88;
+  display: inline-block; margin-left: 4px;
+  animation: agenticDot 2s ease-in-out infinite;
+}
+@keyframes agenticDot {
+  0%,100% { opacity:0.6; transform: scale(1) }
+  50%      { opacity:1;   transform: scale(1.3) }
+}
+
+/* Detail panel agentic section */
+.dp-agentic {
+  margin: 0 0 12px; padding: 12px 14px;
+  background: linear-gradient(135deg, rgba(0,210,255,0.07) 0%, rgba(0,210,255,0.03) 100%);
+  border: 1px solid rgba(0,210,255,0.25); border-radius: var(--radius);
+}
+.dp-agentic.loading { opacity: 0.6 }
+.dp-agentic-header  { display:flex; align-items:center; gap:8px; margin-bottom:6px }
+.dp-agentic-badge   {
+  font-size: 9px; font-weight: 700; letter-spacing: .1em;
+  color: #00d2ff; background: rgba(0,210,255,0.12);
+  padding: 2px 7px; border-radius: 20px; border: 1px solid rgba(0,210,255,0.3);
+}
+.dp-agentic-name    { font-size:13px; font-weight:700; color: var(--text1) }
+.dp-agentic-tagline { font-size:11px; color: var(--text3); margin-bottom:6px; font-style:italic }
+.dp-agentic-greeting {
+  font-size: 12px; color: var(--text2); padding: 6px 10px;
+  background: rgba(0,210,255,0.06); border-left: 2px solid rgba(0,210,255,0.4);
+  border-radius: 2px; margin-bottom:6px; font-style:italic;
+}
+.dp-agentic-traits  { display:flex; flex-wrap:wrap; gap:4px }
+.dp-agentic-trait   {
+  font-size:10px; padding: 2px 8px; border-radius:20px;
+  background: rgba(0,210,255,0.1); color: #00d2ff;
+  border: 1px solid rgba(0,210,255,0.2);
+}
+.dp-agentic-pending { font-size:11px; color: var(--text3); text-align:center }
+.dp-chip.agentic    { background: rgba(0,210,255,0.15); color:#00d2ff; border-color:rgba(0,210,255,0.3) }
+
+/* ── Daily Login Modal ───────────────────────────────────────────── */
+.daily-modal {
+  position: fixed; inset: 0; z-index: 9000;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.7); backdrop-filter: blur(8px);
+  opacity: 0; transition: opacity 0.25s ease;
+}
+.daily-modal.daily-visible { opacity: 1 }
+.daily-modal.daily-exit    { opacity: 0 }
+.daily-card {
+  position: relative; background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 32px 28px; width: 340px;
+  text-align: center; box-shadow: 0 32px 64px rgba(0,0,0,0.6);
+  transform: translateY(16px); transition: transform 0.25s cubic-bezier(.4,0,.2,1);
+  animation: dailySlideIn 0.3s cubic-bezier(.4,0,.2,1) forwards;
+}
+@keyframes dailySlideIn {
+  from { transform: translateY(24px); opacity:0 }
+  to   { transform: translateY(0);    opacity:1 }
+}
+.daily-close    { position:absolute; top:12px; right:12px; background:none; border:none; color:var(--text3); cursor:pointer; font-size:14px }
+.daily-close:hover { color:var(--text1) }
+.daily-streak   { font-size: 48px; margin-bottom: 8px }
+.daily-title    { font-size:11px; font-weight:700; letter-spacing:.15em; color:var(--text3); margin-bottom:4px }
+.daily-streak-text { font-size:16px; font-weight:700; color:var(--text1); margin-bottom:16px }
+.daily-reward   { display:flex; align-items:center; justify-content:center; gap:12px; margin-bottom:20px;
+                  padding:12px; background:rgba(255,255,255,0.04); border-radius:var(--radius-sm); border:1px solid var(--border) }
+.daily-reward-label { font-size:11px; color:var(--text3); text-transform:uppercase; letter-spacing:.08em }
+.daily-reward-coins { font-size:20px; font-weight:800; color:var(--accent) }
+.daily-challenges-title { font-size:10px; font-weight:700; letter-spacing:.12em; color:var(--text3); text-transform:uppercase; margin-bottom:10px }
+.daily-challenge-list   { display:flex; flex-direction:column; gap:8px; margin-bottom:20px }
+.daily-ch-item  {
+  display:flex; align-items:center; gap:8px; padding:8px 12px;
+  background:rgba(255,255,255,0.03); border:1px solid var(--border);
+  border-radius:var(--radius-sm); text-align:left;
+}
+.daily-ch-icon  { font-size:16px }
+.daily-ch-desc  { flex:1; font-size:12px; color:var(--text2) }
+.daily-ch-reward{ font-size:11px; color:var(--accent); font-weight:700; white-space:nowrap }
+.daily-btn      { width:100% }
+
+/* ── Daily Challenges Panel ──────────────────────────────────────── */
+.challenges-wrap { padding: 20px; border-top: 1px solid var(--border) }
+.challenges-wrap::before {
+  content: '— DAILY CHALLENGES —';
+  display: block; text-align:center; font-size:10px; font-weight:700; letter-spacing:.15em;
+  color:var(--text3); margin-bottom:16px;
+}
+.ch-list        { display:flex; flex-direction:column; gap:10px }
+.ch-row         { padding:12px 14px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius-sm) }
+.ch-row.ch-done { border-color: rgba(100,220,100,0.35); background:rgba(100,220,100,0.05) }
+.ch-top         { display:flex; align-items:center; gap:8px; margin-bottom:8px }
+.ch-icon        { font-size:16px }
+.ch-desc        { flex:1; font-size:12px; color:var(--text2) }
+.ch-reward      { font-size:11px; color:var(--accent); font-weight:700 }
+.ch-reward.done { color:#64dc64 }
+.ch-bar-wrap    { height:3px; background:rgba(255,255,255,0.08); border-radius:2px; margin-bottom:5px; overflow:hidden }
+.ch-bar-fill    { height:100%; background:var(--accent); border-radius:2px; transition:width .5s ease }
+.ch-row.ch-done .ch-bar-fill { background:#64dc64 }
+.ch-progress    { font-size:10px; color:var(--text3) }
+.ch-row.ch-done .ch-progress { color:#64dc64 }
+.ch-empty       { font-size:12px; color:var(--text3); text-align:center; padding:20px }
+
 /* ── Responsive ─────────────────────────────────────────────────── */
 @media (max-width: 1000px) {
   .room-grid { grid-template-columns: repeat(2,1fr) }

@@ -179,10 +179,28 @@ export function showDetailPanel(normie, coins) {
   panel.id = 'detail-panel'; panel.className = 'detail-panel'
   const act = ACTIVITY_META[normie.activity]
 
+  // Agentic section (shown when persona is loaded)
+  const agenticSection = normie.isAgentic ? `
+    <div class="dp-agentic ${normie.agentPersona ? '' : 'loading'}">
+      ${normie.agentPersona ? `
+        <div class="dp-agentic-header">
+          <span class="dp-agentic-badge">✦ AGENTIC</span>
+          <span class="dp-agentic-name">${normie.agentPersona.name}</span>
+        </div>
+        <div class="dp-agentic-tagline">${normie.agentPersona.tagline || ''}</div>
+        ${normie.agentPersona.greeting ? `<div class="dp-agentic-greeting">"${normie.agentPersona.greeting}"</div>` : ''}
+        ${normie.agentPersona.personalityTraits?.length ? `
+          <div class="dp-agentic-traits">
+            ${normie.agentPersona.personalityTraits.slice(0,4).map(t=>`<span class="dp-agentic-trait">${t}</span>`).join('')}
+          </div>` : ''}
+      ` : '<div class="dp-agentic-pending">✦ Loading agent persona…</div>'}
+    </div>` : ''
+
   panel.innerHTML = `
     <div class="dp-header">
       <div class="dp-name-row">
         <span class="dp-name">${normie.name}</span>
+        ${normie.isAgentic ? '<span class="dp-chip agentic">✦ AGENT</span>' : ''}
         ${normie.customized ? '<span class="dp-chip custom">✦ CUSTOM</span>' : ''}
         <span class="dp-chip level">LV ${normie.level}</span>
         ${normie.actionPoints > 0 ? `<span class="dp-chip ap">AP ${normie.actionPoints}</span>` : ''}
@@ -212,6 +230,7 @@ export function showDetailPanel(normie, coins) {
         }).join('')}
       </div>
     </div>
+    ${agenticSection}
     <div class="dp-traits">
       ${(normie.traits||[]).slice(0,6).map(t=>`
         <div class="trait-chip">
@@ -638,3 +657,82 @@ export async function renderLeaderboard(currentAddress, isDemo) {
     renderLeaderboard(currentAddress, isDemo)
   })
 }
+
+// ── Daily Login Modal ─────────────────────────────────────────────────────────
+export function showDailyModal(streak, reward, challenges) {
+  const existing = document.getElementById('daily-modal')
+  if (existing) existing.remove()
+
+  const streakEmoji = streak >= 7 ? '🔥' : streak >= 3 ? '✨' : '⭐'
+  const streakMsg   = streak === 1
+    ? 'First login!'
+    : streak >= 7
+    ? `${streak}-day streak! You're on fire!`
+    : `${streak} days in a row!`
+
+  const el = document.createElement('div')
+  el.id = 'daily-modal'
+  el.className = 'daily-modal'
+  el.innerHTML = `
+    <div class="daily-card">
+      <button class="btn-x daily-close" id="daily-close">✕</button>
+      <div class="daily-streak">${streakEmoji}</div>
+      <div class="daily-title">DAILY CHECK-IN</div>
+      <div class="daily-streak-text">${streakMsg}</div>
+      <div class="daily-reward">
+        <span class="daily-reward-label">Today's reward</span>
+        <span class="daily-reward-coins">+${reward} 🪙</span>
+      </div>
+      <div class="daily-challenges-title">TODAY'S CHALLENGES</div>
+      <div class="daily-challenge-list">
+        ${challenges.map(ch => `
+          <div class="daily-ch-item">
+            <span class="daily-ch-icon">${ch.icon}</span>
+            <span class="daily-ch-desc">${ch.desc}</span>
+            <span class="daily-ch-reward">+${ch.reward}🪙</span>
+          </div>`).join('')}
+      </div>
+      <button class="btn btn-primary daily-btn" id="daily-ok">LET'S GO</button>
+    </div>`
+
+  document.body.appendChild(el)
+
+  const close = () => { el.classList.add('daily-exit'); setTimeout(() => el.remove(), 300) }
+  document.getElementById('daily-close').onclick = close
+  document.getElementById('daily-ok').onclick    = close
+  // Show with animation
+  requestAnimationFrame(() => el.classList.add('daily-visible'))
+}
+
+// ── Daily Challenges Panel ─────────────────────────────────────────────────────
+export function renderChallenges(challenges, progress) {
+  const panel = document.getElementById('challenges-panel')
+  if (!panel) return
+
+  if (!challenges.length) {
+    panel.innerHTML = `<div class="ch-empty">Check back tomorrow for daily challenges!</div>`
+    return
+  }
+
+  panel.innerHTML = `
+    <div class="ch-list">
+      ${challenges.map(ch => {
+        const prog = progress[ch.id] || 0
+        const done = prog >= ch.target
+        const pct  = Math.min((prog / ch.target) * 100, 100)
+        return `
+          <div class="ch-row${done ? ' ch-done' : ''}">
+            <div class="ch-top">
+              <span class="ch-icon">${ch.icon}</span>
+              <span class="ch-desc">${ch.desc}</span>
+              <span class="ch-reward${done ? ' done' : ''}">+${ch.reward}🪙</span>
+            </div>
+            <div class="ch-bar-wrap">
+              <div class="ch-bar-fill" style="width:${pct}%"></div>
+            </div>
+            <div class="ch-progress">${done ? '✓ Complete' : `${prog} / ${ch.target}`}</div>
+          </div>`
+      }).join('')}
+    </div>`
+}
+

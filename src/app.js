@@ -1,7 +1,7 @@
 import {
   DEMO_IDS, TICK_MS, GAME_MINS_PER_TICK,
-  ACTIVITY_META, CHAT_LINES, EVENT_TEMPLATES, ALL_NEEDS,
-  UPGRADES, ACHIEVEMENTS,
+  ACTIVITY_META, CHAT_LINES, ROOM_CHAT, EVENT_TEMPLATES, ALL_NEEDS,
+  UPGRADES, ACHIEVEMENTS, CHALLENGE_POOL,
   COINS_CLICK_BASE, COINS_PER_TICK_BASE,
   COINS_ACTIVITY_SWITCH,
   COINS_NEED_SATISFIED, COINS_CRITICAL_PENALTY,
@@ -9,6 +9,7 @@ import {
   COMBO_WINDOW_MS, COMBO_MAX,
   buildRoomList,
 } from './constants.js'
+import { checkAgenticBatch, fetchAgentPersona, getAgentChatLine } from './agentic.js'
 import {
   saveState, loadState, freshNeeds, buildPersonality,
   pickActivity, activityDuration, tickNormie,
@@ -31,6 +32,7 @@ import {
   renderHowItWorks,
   renderLoading, updateLoadProgress,
   renderLeaderboard,
+  showDailyModal, renderChallenges,
 } from './ui.js'
 
 export class App {
@@ -73,6 +75,10 @@ export class App {
     this._lastRaf = null
     this._glyphRaf = null
     this._incomeHistory = []
+
+    // Daily system
+    this._daily = null          // loaded in _initDailySystem
+    this._challengeProgress = {}
   }
 
   async init() {
@@ -279,6 +285,12 @@ export class App {
     this._observedActivities = new Set(this.normies.map(n => n.activity))
     await this._renderDorm()
 
+    // ── Agentic check (non-blocking, happens in background) ─────────────────
+    this._initAgenticNormies(ids)
+
+    // ── Daily system ─────────────────────────────────────────────────────────
+    this._initDailySystem()
+
     if (offlineMinutes > 5) showOfflineModal(offlineMinutes, () =>
       logEvent(`Welcome back — ${offlineMinutes}m elapsed.`)
     )
@@ -368,6 +380,7 @@ export class App {
 
         <div class="tab-content" id="tab-achievements">
           <div class="ach-wrap" id="ach-panel"></div>
+          <div class="challenges-wrap" id="challenges-panel"></div>
         </div>
 
         <div class="tab-content" id="tab-leaderboard">
@@ -416,7 +429,7 @@ export class App {
     this.root.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab))
     this.root.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === `tab-${tab}`))
     if (tab === 'shop')         renderShop(this.purchasedUpgrades, this.coins, id => this._buyUpgrade(id))
-    if (tab === 'achievements') renderAchievements(this.earnedAchievements)
+    if (tab === 'achievements') { renderAchievements(this.earnedAchievements); renderChallenges(this._daily?.challenges || [], this._challengeProgress) }
     if (tab === 'leaderboard')  renderLeaderboard(this.address, this.isDemo)
   }
 
@@ -449,6 +462,12 @@ export class App {
     showDetailPanel(normie, this.coins)
     this._checkAchievements()
     updateStats(this.normies, this.coins, this.gameMinute, calcDormHappiness(this.normies), this._incomePerMin())
+
+    // Challenge tracking
+    this._trackChallenge('clicks', 1)
+    this._trackChallenge('clickCoins', amt)
+    this._trackChallenge('maxCombo', this.comboCount)
+    if (this.comboCount === this._maxCombo()) this._trackChallenge('maxComboHit', 1)
   }
 
   _maxCombo() { return COMBO_MAX + (this.upgradeEffects.comboBonus || 0) }
@@ -459,7 +478,13 @@ export class App {
     const cost = costs[action]
     if (this.coins < cost) { notify('Not enough coins!', 'warn'); return }
     this.coins -= cost
-    if (action === 'feed')   { normie.needs.hunger = clamp(normie.needs.hunger + 20); notify(`Fed ${normie.name}`,'info'); logEvent(EVENT_TEMPLATES.feed(normie.name)); this.gameStats.feedCount++ }
+    if (action === 'feed')   {
+      normie.needs.hunger = clamp(normie.needs.hunger + 20)
+      notify(`Fed ${normie.name}`,'info')
+      logEvent(EVENT_TEMPLATES.feed(normie.name))
+      this.gameStats.feedCount++
+      this._trackChallenge('feed', 1)
+    }
     if (action === 'energy') { normie.needs.energy = clamp(normie.needs.energy + 35); notify(`Energy drink for ${normie.name}`,'info'); logEvent(EVENT_TEMPLATES.energyDrink(normie.name)) }
     if (action === 'study')  { normie.needs.study  = clamp(normie.needs.study + 30); normie.needs.fun = clamp(normie.needs.fun - 5); notify(`Focus session for ${normie.name}`,'info') }
     closeDetailPanel()
@@ -500,6 +525,7 @@ export class App {
     if (lvl + 1 >= upg.maxLevel) this.gameStats.maxUpgradeEarned = true
     notify(`${upg.icon} ${upg.name} upgraded to Lv.${lvl + 1}`, 'info')
     logEvent(EVENT_TEMPLATES.upgrade(upg.name, lvl + 1))
+    this._trackChallenge('upgrades', 1)
     renderShop(this.purchasedUpgrades, this.coins, id => this._buyUpgrade(id))
     this._checkAchievements()
     updateStats(this.normies, this.coins, this.gameMinute, calcDormHappiness(this.normies), this._incomePerMin())
@@ -569,6 +595,19 @@ export class App {
     for (const n of this.normies) this._observedActivities.add(n.activity)
     this.gameStats.uniqueActivitiesSeen = this._observedActivities.size
 
+    // Daily challenge checks (every 10 ticks)
+    if (this.tickCount % 10 === 0) {
+      const outsideCount = this.normies.filter(n => n.location === 'outdoor').length
+      if (outsideCount >= 1) this._trackChallenge('outsideCount', outsideCount)
+      if (this.normies.every(n => calcDormHappiness([n]) >= 70)) this._trackChallenge('allHappy', 1)
+      if (this.normies.every(n => calcDormHappiness([n]) >= 85)) this._trackChallenge('allGreat', 1)
+      const recovered = this.gameStats.criticalRecovered
+      if (recovered > (this._prevRecovered || 0)) {
+        this._trackChallenge('recovered', recovered - (this._prevRecovered || 0))
+        this._prevRecovered = recovered
+      }
+    }
+
     if (this.tickCount % 20 === 0) this._checkAchievements()
     updateStats(this.normies, this.coins, this.gameMinute, dormHappiness, this._incomePerMin())
     updateOccupancy(this.normies)
@@ -612,17 +651,180 @@ export class App {
   }
 
   _chatTick() {
-    if (Math.random() > 0.22) return   // reduced from 0.45 — much less frequent chatter
+    if (Math.random() > 0.22) return
     const eligible = this.normies.filter(n =>
       n.chatCooldown <= 0 &&
-      ['chatting','outside','gaming','eating','walking','exercising','cooking','sketching'].includes(n.activity)
+      ['chatting','outside','gaming','eating','walking','exercising','cooking','sketching',
+       'jamming','dancing','meditating','reading','studying','sleeping','napping'].includes(n.activity)
     )
     if (!eligible.length) return
     const n      = eligible[Math.floor(Math.random() * eligible.length)]
     const isCrit = Object.values(n.needs).some(v => v < 12)
-    const pool   = isCrit ? CHAT_LINES.critical : (CHAT_LINES[n.activity] || CHAT_LINES.chatting)
-    showChatBubble(n.id, pool[Math.floor(Math.random() * pool.length)])
-    n.chatCooldown = 40 + Math.floor(Math.random() * 30)   // longer cooldown between bubbles
+
+    let line
+    if (isCrit) {
+      const pool = ROOM_CHAT.critical
+      line = pool[Math.floor(Math.random() * pool.length)]
+    } else if (n.isAgentic && n.agentPersona) {
+      // Agentic normie: personality-driven in-character line
+      const roomType = this._getRoomType(n.location)
+      line = getAgentChatLine(n.agentPersona, roomType, n.activity)
+           || this._pickRoomLine(n)
+    } else {
+      line = this._pickRoomLine(n)
+    }
+    if (line) showChatBubble(n.id, line)
+    n.chatCooldown = 40 + Math.floor(Math.random() * 30)
+  }
+
+  _pickRoomLine(n) {
+    const roomType = this._getRoomType(n.location)
+    const roomBank = ROOM_CHAT[roomType]
+    // Try room+activity first, then room general, then fallback to CHAT_LINES
+    const actPool  = roomBank?.[n.activity]
+    const roomPool = roomBank?._room
+    const fallback = CHAT_LINES[n.activity] || CHAT_LINES.chatting
+    const combined = [
+      ...(actPool  ? [...actPool,  ...actPool]  : []),   // weight activity-specific higher
+      ...(roomPool ? roomPool : []),
+      ...fallback,
+    ]
+    return combined[Math.floor(Math.random() * combined.length)]
+  }
+
+  _getRoomType(locationId) {
+    if (locationId === 'outdoor') return 'outdoor'
+    const room = this.rooms.find(r => r.id === locationId)
+    return room?.typeId || 'outdoor'
+  }
+
+  // ── Agentic normie initialization (runs in background) ──────────────────
+  async _initAgenticNormies(ids) {
+    try {
+      const agenticIds = await checkAgenticBatch(ids)
+      if (!agenticIds.size) return
+
+      // Mark agentic normies visually
+      for (const id of agenticIds) {
+        const n = this.normieMap.get(id)
+        if (!n) continue
+        n.isAgentic = true
+        // Add CSS class to the sprite canvas
+        const canvas = document.getElementById(`sprite-${id}`)
+        if (canvas) canvas.classList.add('is-agentic')
+      }
+
+      // Fetch personas for agentic normies (staggered to avoid rate limits)
+      let delay = 0
+      for (const id of agenticIds) {
+        const n = this.normieMap.get(id)
+        if (!n) continue
+        setTimeout(async () => {
+          const persona = await fetchAgentPersona(id)
+          if (persona && n) {
+            n.agentPersona = persona
+            n.agentName    = persona.name
+            // Show a toast for the first agentic normie discovered
+            if (!this._agentToastShown) {
+              this._agentToastShown = true
+              notify(`${persona.name} is an Agentic Normie (ERC-8004) ✦`, 'info', 5000)
+            }
+          }
+        }, delay)
+        delay += 600  // stagger requests to respect rate limits
+      }
+    } catch {
+      // Silently ignore — agentic features are additive
+    }
+  }
+
+  // ── Daily system ─────────────────────────────────────────────────────────
+  _initDailySystem() {
+    const key    = `nd_daily_${this.address || 'demo'}`
+    const stored = JSON.parse(localStorage.getItem(key) || '{}')
+    const today  = new Date().toDateString()
+    const prev   = stored.lastLoginDate
+
+    if (prev === today) {
+      // Same day — restore challenges only
+      this._daily           = stored
+      this._challengeProgress = stored.challengeProgress || {}
+      renderChallenges(stored.challenges || [], this._challengeProgress)
+      return
+    }
+
+    // New day!
+    const yesterday   = new Date(); yesterday.setDate(yesterday.getDate() - 1)
+    const consecutive = prev === yesterday.toDateString()
+    const streak      = consecutive ? (stored.streak || 0) + 1 : 1
+    const baseReward  = 100 + streak * 50
+    const capReward   = Math.min(baseReward, 800)
+
+    // Pick 3 random non-duplicate challenges
+    const pool      = [...CHALLENGE_POOL].sort(() => Math.random() - 0.5)
+    const challenges = pool.slice(0, 3)
+
+    const daily = { lastLoginDate: today, streak, challenges, challengeProgress: {} }
+    localStorage.setItem(key, JSON.stringify(daily))
+
+    this._daily             = daily
+    this._challengeProgress = {}
+
+    // Grant reward coins
+    this.coins += capReward
+    this.gameStats.totalCoinsEarned += capReward
+
+    // Show the daily login modal
+    showDailyModal(streak, capReward, challenges)
+
+    // Normies miss you after 12+ hours away
+    if (prev) {
+      const hoursAway = (Date.now() - (stored.lastLoginTs || 0)) / 3600000
+      if (hoursAway >= 8) {
+        setTimeout(() => {
+          const lines = [
+            'missed you!', 'finally you showed up', 'we were worried',
+            'you were gone so long', 'the dorm needed you',
+          ]
+          const n = this.normies[Math.floor(Math.random() * this.normies.length)]
+          if (n) showChatBubble(n.id, lines[Math.floor(Math.random() * lines.length)])
+        }, 3000)
+      }
+    }
+
+    renderChallenges(challenges, {})
+    setTimeout(() => {
+      stored.lastLoginTs = Date.now()
+      localStorage.setItem(key, JSON.stringify({ ...daily, lastLoginTs: Date.now() }))
+    }, 0)
+  }
+
+  _trackChallenge(type, amount = 1) {
+    if (!this._daily?.challenges) return
+    let updated = false
+    for (const ch of this._daily.challenges) {
+      if (ch.type !== type) continue
+      const prev = this._challengeProgress[ch.id] || 0
+      if (prev >= ch.target) continue
+      const next = Math.min(prev + amount, ch.target)
+      this._challengeProgress[ch.id] = next
+      updated = true
+      // Complete!
+      if (next >= ch.target && prev < ch.target) {
+        this.coins += ch.reward
+        this.gameStats.totalCoinsEarned += ch.reward
+        notify(`${ch.icon} Challenge complete: "${ch.desc}" +${ch.reward} coins!`, 'success', 5000)
+        logEvent(`Challenge completed: ${ch.desc}`)
+      }
+    }
+    if (updated) {
+      // Persist progress
+      const key = `nd_daily_${this.address || 'demo'}`
+      const stored = JSON.parse(localStorage.getItem(key) || '{}')
+      stored.challengeProgress = this._challengeProgress
+      localStorage.setItem(key, JSON.stringify(stored))
+      if (this.activeTab === 'achievements') renderChallenges(this._daily.challenges, this._challengeProgress)
+    }
   }
 
   _checkAchievements() {
