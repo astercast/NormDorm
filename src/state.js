@@ -186,21 +186,41 @@ export function calcDormHappiness(normies) {
 export function checkAchievements(stats, earned) {
   const newOnes = []
   const check = (id, cond) => { if (cond && !earned.includes(id)) newOnes.push(id) }
-  check('first_click',    stats.totalClicks        >= 1)
-  check('combo_5',        stats.maxCombo           >= 5)
-  check('combo_max',      stats.maxCombo           >= COMBO_MAX)
-  check('coins_500',      stats.totalCoinsEarned   >= 500)
-  check('coins_1000',     stats.totalCoinsEarned   >= 1000)
-  check('coins_5000',     stats.totalCoinsEarned   >= 5000)
-  check('coins_25000',    stats.totalCoinsEarned   >= 25000)
-  check('all_happy',      stats.allHappyOnce)
-  check('peak_dorm',      stats.peakHappinessOnce)
-  check('first_upgrade',  stats.totalUpgradesBought >= 1)
-  check('five_upgrades',  stats.totalUpgradesBought >= 5)
-  check('six_activities', stats.allActivitiesOnce)
-  check('feed_5',         stats.feedCount          >= 5)
-  check('feed_20',        stats.feedCount          >= 20)
-  check('survivor',       stats.criticalRecovered  >= 1)
+
+  // Tutorial
+  check('first_click',    stats.totalClicks           >= 1)
+  check('first_upgrade',  stats.totalUpgradesBought   >= 1)
+  check('combo_5',        stats.maxCombo               >= 5)
+  check('survivor',       stats.criticalRecovered      >= 1)
+
+  // Engagement
+  check('coins_1000',     stats.totalCoinsEarned       >= 1000)
+  check('click_100',      stats.totalClicks            >= 100)
+  check('feed_5',         stats.feedCount              >= 5)
+  check('five_upgrades',  stats.totalUpgradesBought    >= 5)
   check('night_owl',      stats.nightOwlOnce)
+  check('six_activities', stats.allActivitiesOnce)
+
+  // Skill
+  check('combo_max',      stats.maxCombo               >= COMBO_MAX)
+  check('coins_5000',     stats.totalCoinsEarned       >= 5000)
+  check('coins_25000',    stats.totalCoinsEarned       >= 25000)
+  check('all_happy',      stats.allHappyOnce)
+  check('click_500',      stats.totalClicks            >= 500)
+  check('feed_20',        stats.feedCount              >= 20)
+  check('survivor_x5',    stats.criticalRecovered      >= 5)
+
+  // Mastery
+  check('combo_god',      stats.comboMaxHits           >= 5)
+  check('coins_100000',   stats.totalCoinsEarned       >= 100000)
+  check('peak_dorm',      stats.peakHappinessOnce)
+  check('all_activities', stats.uniqueActivitiesSeen   >= 12)
+  check('max_upgrade',    stats.maxUpgradeEarned)
+
+  // Legend
+  check('click_2000',     stats.totalClicks            >= 2000)
+  check('coins_500000',   stats.totalCoinsEarned       >= 500000)
+  check('perfect_dorm',   stats.perfectDormOnce)
+
   return newOnes
 }

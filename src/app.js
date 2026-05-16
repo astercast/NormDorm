@@ -57,9 +57,14 @@ export class App {
     this.earnedAchievements = []
     this.gameStats = {
       totalClicks:0, totalCoinsEarned:0, totalUpgradesBought:0,
-      allHappyOnce:false, allActivitiesOnce:false, peakHappinessOnce:false, nightOwlOnce:false,
+      allHappyOnce:false, allActivitiesOnce:false, peakHappinessOnce:false,
+      perfectDormOnce:false,
+      nightOwlOnce:false,
       maxCombo:0, satisfiedCount:0, feedCount:0, criticalRecovered:0,
+      comboMaxHits:0, uniqueActivitiesSeen:0, maxUpgradeEarned:false,
     }
+
+    this._observedActivities = new Set()
 
     this._tick = null; this._save = null
     this._chat = null; this._raf  = null
@@ -269,6 +274,7 @@ export class App {
     }
 
     this.normieMap = new Map(this.normies.map(n => [n.id, n]))
+    this._observedActivities = new Set(this.normies.map(n => n.activity))
     await this._renderDorm()
 
     if (offlineMinutes > 5) showOfflineModal(offlineMinutes, () =>
@@ -422,6 +428,7 @@ export class App {
     this.gameStats.totalClicks++
     this.gameStats.totalCoinsEarned += amt
     this.gameStats.maxCombo = Math.max(this.gameStats.maxCombo, this.comboCount)
+    if (this.comboCount === this._maxCombo()) this.gameStats.comboMaxHits++
 
     normie.needs.fun    = clamp(normie.needs.fun    + 4)
     normie.needs.social = clamp(normie.needs.social + 2)
@@ -480,6 +487,7 @@ export class App {
     this.purchasedUpgrades[upgradeId] = lvl + 1
     this.upgradeEffects = buildUpgradeEffects(this.purchasedUpgrades)
     this.gameStats.totalUpgradesBought++
+    if (lvl + 1 >= upg.maxLevel) this.gameStats.maxUpgradeEarned = true
     notify(`${upg.icon} ${upg.name} upgraded to Lv.${lvl + 1}`, 'info')
     logEvent(EVENT_TEMPLATES.upgrade(upg.name, lvl + 1))
     renderShop(this.purchasedUpgrades, this.coins, id => this._buyUpgrade(id))
@@ -537,10 +545,15 @@ export class App {
 
     // Achievement stat tracking
     const dormHappiness = calcDormHappiness(this.normies)
-    if (dormHappiness >= 85) this.gameStats.peakHappinessOnce = true
-    if (this.normies.every(n => ALL_NEEDS.every(k => n.needs[k] > 80))) this.gameStats.allHappyOnce = true
+    if (dormHappiness >= 90) this.gameStats.peakHappinessOnce = true
+    if (this.normies.every(n => ALL_NEEDS.every(k => n.needs[k] > 75))) this.gameStats.allHappyOnce = true
+    if (this.normies.every(n => ALL_NEEDS.every(k => n.needs[k] > 90))) this.gameStats.perfectDormOnce = true
     const gameHour = Math.floor((this.gameMinute / 60) % 24)
     if (gameHour >= 23 || gameHour === 0) this.gameStats.nightOwlOnce = true
+
+    // Track unique activity types observed this session
+    for (const n of this.normies) this._observedActivities.add(n.activity)
+    this.gameStats.uniqueActivitiesSeen = this._observedActivities.size
 
     if (this.tickCount % 8 === 0) this._checkAchievements()
     updateStats(this.normies, this.coins, this.gameMinute, dormHappiness, this._incomePerMin())

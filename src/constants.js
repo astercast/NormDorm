@@ -108,22 +108,40 @@ export const UPGRADES = [
 ]
 
 export const ACHIEVEMENTS = [
-  { id:'first_click',    icon:'👆', name:'First Click',       desc:'Click your first normie',                    reward:25  },
-  { id:'combo_5',        icon:'🔥', name:'On Fire',           desc:'Build a ×5 click combo',                     reward:50  },
-  { id:'combo_max',      icon:'🚀', name:'Full Send',         desc:'Hit the maximum ×8 combo',                   reward:150 },
-  { id:'coins_500',      icon:'🪙', name:'First Paycheck',    desc:'Earn 500 coins total',                       reward:0   },
-  { id:'coins_1000',     icon:'💰', name:'Bag Secured',       desc:'Earn 1,000 coins total',                     reward:0   },
-  { id:'coins_5000',     icon:'💎', name:'Dorm Rich',         desc:'Earn 5,000 coins total',                     reward:100 },
-  { id:'coins_25000',    icon:'🏦', name:'Mogul',             desc:'Earn 25,000 coins total',                    reward:500 },
-  { id:'all_happy',      icon:'😊', name:'Dorm Bliss',        desc:'All normies above 80 needs at once',         reward:200 },
-  { id:'peak_dorm',      icon:'✨', name:'Peak Dorm',         desc:'Average dorm happiness above 85%',           reward:350 },
-  { id:'first_upgrade',  icon:'⬆️', name:'Renovator',         desc:'Buy your first upgrade',                     reward:50  },
-  { id:'five_upgrades',  icon:'🛠️', name:'Handyman',         desc:'Purchase 5 upgrades total',                  reward:150 },
-  { id:'six_activities', icon:'🎯', name:'Variety Pack',      desc:'6 different activities at once',             reward:75  },
-  { id:'feed_5',         icon:'🍜', name:'Mess Hall',         desc:'Feed normies 5 times',                       reward:50  },
-  { id:'feed_20',        icon:'🧑‍🍳', name:'Head Chef',       desc:'Feed normies 20 times',                      reward:150 },
-  { id:'survivor',       icon:'⚠️', name:'Crisis Averted',   desc:'Recover a normie from a critical need',      reward:75  },
-  { id:'night_owl',      icon:'🌙', name:'Night Owl',         desc:'Have normies active at game midnight',        reward:100 },
+  // ── Tutorial (first 5 min) ─────────────────────────────────────────────
+  { id:'first_click',    icon:'👆', name:'First Tap',       desc:'Click a Normie for the first time',               reward:10   },
+  { id:'first_upgrade',  icon:'⬆️', name:'Renovator',       desc:'Buy your first upgrade',                          reward:50   },
+  { id:'combo_5',        icon:'🔥', name:'On Fire',         desc:'Build a ×5 click combo',                          reward:100  },
+  { id:'survivor',       icon:'⚠️', name:'Crisis Averted', desc:'Rescue a Normie from a critical need',             reward:75   },
+
+  // ── Engagement (30 min) ────────────────────────────────────────────────
+  { id:'coins_1000',     icon:'🪙', name:'First Paycheck',  desc:'Earn 1,000 coins total',                          reward:50   },
+  { id:'click_100',      icon:'🤙', name:'Tap Addict',      desc:'Click Normies 100 times',                         reward:150  },
+  { id:'feed_5',         icon:'🍜', name:'Mess Hall',       desc:'Feed Normies 5 times',                            reward:50   },
+  { id:'five_upgrades',  icon:'🛠️', name:'Handyman',       desc:'Buy 5 upgrades total',                            reward:150  },
+  { id:'night_owl',      icon:'🌙', name:'Night Owl',       desc:'Have Normies active at game midnight',             reward:100  },
+  { id:'six_activities', icon:'🎯', name:'Variety Pack',    desc:'6 different activities running at once',           reward:100  },
+
+  // ── Skill (active play) ────────────────────────────────────────────────
+  { id:'combo_max',      icon:'🚀', name:'Full Send',       desc:`Hit the maximum ×${COMBO_MAX} combo`,             reward:250  },
+  { id:'coins_5000',     icon:'💰', name:'Getting Paid',    desc:'Earn 5,000 coins total',                          reward:100  },
+  { id:'coins_25000',    icon:'💎', name:'Dorm Rich',       desc:'Earn 25,000 coins total',                         reward:350  },
+  { id:'all_happy',      icon:'😊', name:'Dorm Bliss',      desc:'Every Normie above 75 in all needs at once',      reward:300  },
+  { id:'click_500',      icon:'⚡', name:'Combo Machine',   desc:'Click Normies 500 times',                         reward:400  },
+  { id:'feed_20',        icon:'🧑‍🍳', name:'Head Chef',     desc:'Feed Normies 20 times',                           reward:200  },
+  { id:'survivor_x5',    icon:'🏥', name:'Dorm Medic',      desc:'Rescue Normies from critical need 5 times',       reward:250  },
+
+  // ── Mastery (dedicated play) ───────────────────────────────────────────
+  { id:'combo_god',      icon:'💥', name:'Combo God',       desc:`Hit max combo 5 times in one session`,            reward:750  },
+  { id:'coins_100000',   icon:'🏦', name:'Mogul',           desc:'Earn 100,000 coins total',                        reward:1000 },
+  { id:'peak_dorm',      icon:'✨', name:'Peak Dorm',       desc:'Average dorm happiness above 90%',                reward:500  },
+  { id:'all_activities', icon:'🌈', name:'Full Roster',     desc:'Observe 12 different activity types in a session', reward:500 },
+  { id:'max_upgrade',    icon:'⭐', name:'Maxed Out',        desc:'Max-level any single upgrade',                    reward:400  },
+
+  // ── Legend (hardcore) ──────────────────────────────────────────────────
+  { id:'click_2000',     icon:'🌊', name:'Unstoppable',     desc:'Click Normies 2,000 times',                       reward:1500 },
+  { id:'coins_500000',   icon:'👑', name:'Legend',          desc:'Earn 500,000 coins total',                        reward:5000 },
+  { id:'perfect_dorm',   icon:'💫', name:'Perfect Dorm',    desc:'All Normies above 90 in every need at once',      reward:2000 },
 ]
 
 export const EVENT_TEMPLATES = {

@@ -564,6 +564,127 @@ function _drawRoom(ctx, room) {
   ctx.restore()
 }
 
+// ── Activity classification ────────────────────────────────────────────────
+const WALK_ACTS = new Set(['walking', 'outside', 'exercising', 'dancing'])
+
+// ── Per-room furniture anchor spots (x=left%, y=bottom%) ──────────────────
+// x: left edge of sprite as % of room width (valid: 4 – ~69)
+// y: bottom edge of sprite as % of room height
+//    ~6–10% = floor/front,  ~22–30% = at furniture depth
+const DEFAULT_SPOTS = [{ x:25, y:6 }, { x:45, y:6 }, { x:62, y:6 }]
+
+const ROOM_ACTIVITY_SPOTS = {
+  study: {
+    studying:   [{ x:4,  y:28 }],
+    gaming:     [{ x:4,  y:28 }],
+    reading:    [{ x:4,  y:28 }, { x:54, y:8 }],
+    eating:     [{ x:4,  y:28 }],
+    sleeping:   [{ x:18, y:22 }],
+    napping:    [{ x:18, y:22 }],
+    sketching:  [{ x:4,  y:28 }],
+    chatting:   [{ x:36, y:8  }, { x:52, y:8  }],
+    cooking:    [{ x:36, y:8  }],
+    showering:  [{ x:58, y:8  }],
+    _default:   [{ x:26, y:8  }, { x:46, y:8  }, { x:60, y:8  }],
+  },
+  gaming: {
+    gaming:     [{ x:14, y:28 }],
+    studying:   [{ x:14, y:28 }],
+    eating:     [{ x:46, y:8  }],
+    chatting:   [{ x:46, y:8  }, { x:60, y:8  }],
+    sleeping:   [{ x:14, y:28 }],
+    napping:    [{ x:14, y:28 }],
+    sketching:  [{ x:46, y:8  }],
+    _default:   [{ x:30, y:8  }, { x:50, y:8  }, { x:64, y:8  }],
+  },
+  chill: {
+    gaming:     [{ x:9,  y:28 }, { x:34, y:28 }, { x:57, y:28 }],
+    chatting:   [{ x:9,  y:28 }, { x:34, y:28 }, { x:57, y:28 }],
+    reading:    [{ x:9,  y:28 }, { x:57, y:28 }],
+    eating:     [{ x:34, y:28 }, { x:50, y:28 }],
+    sleeping:   [{ x:18, y:28 }],
+    napping:    [{ x:18, y:28 }],
+    meditating: [{ x:48, y:8  }],
+    dancing:    [{ x:38, y:8  }, { x:55, y:8  }],
+    cooking:    [{ x:62, y:8  }],
+    sketching:  [{ x:12, y:8  }],
+    _default:   [{ x:22, y:8  }, { x:44, y:28 }, { x:60, y:8  }],
+  },
+  gym: {
+    exercising: [{ x:5,  y:28 }, { x:22, y:28 }],
+    walking:    [{ x:5,  y:28 }, { x:22, y:28 }],
+    showering:  [{ x:60, y:8  }],
+    chatting:   [{ x:42, y:8  }, { x:56, y:8  }],
+    meditating: [{ x:42, y:8  }],
+    dancing:    [{ x:38, y:8  }, { x:54, y:8  }],
+    sleeping:   [{ x:5,  y:28 }],
+    napping:    [{ x:5,  y:28 }],
+    _default:   [{ x:28, y:8  }, { x:46, y:8  }, { x:60, y:8  }],
+  },
+  library: {
+    reading:    [{ x:18, y:24 }, { x:34, y:24 }, { x:50, y:24 }],
+    studying:   [{ x:18, y:24 }, { x:34, y:24 }],
+    sketching:  [{ x:50, y:24 }],
+    meditating: [{ x:36, y:8  }],
+    chatting:   [{ x:18, y:24 }, { x:50, y:24 }],
+    napping:    [{ x:36, y:24 }],
+    sleeping:   [{ x:36, y:24 }],
+    _default:   [{ x:22, y:8  }, { x:42, y:24 }, { x:58, y:8  }],
+  },
+  music: {
+    jamming:    [{ x:11, y:28 }],
+    dancing:    [{ x:38, y:8  }, { x:54, y:8  }],
+    chatting:   [{ x:38, y:8  }, { x:54, y:8  }],
+    sketching:  [{ x:26, y:8  }],
+    meditating: [{ x:48, y:8  }],
+    exercising: [{ x:7,  y:28 }],
+    sleeping:   [{ x:11, y:28 }],
+    napping:    [{ x:11, y:28 }],
+    _default:   [{ x:26, y:8  }, { x:46, y:8  }, { x:60, y:8  }],
+  },
+  kitchen: {
+    cooking:    [{ x:18, y:28 }, { x:36, y:28 }],
+    eating:     [{ x:18, y:28 }, { x:36, y:28 }],
+    chatting:   [{ x:44, y:8  }, { x:57, y:8  }],
+    walking:    [{ x:32, y:8  }, { x:50, y:8  }],
+    sleeping:   [{ x:18, y:28 }],
+    napping:    [{ x:18, y:28 }],
+    _default:   [{ x:20, y:8  }, { x:38, y:28 }, { x:54, y:8  }],
+  },
+  art: {
+    sketching:  [{ x:32, y:28 }],
+    studying:   [{ x:32, y:28 }],
+    meditating: [{ x:18, y:8  }],
+    chatting:   [{ x:18, y:8  }, { x:60, y:8  }],
+    reading:    [{ x:6,  y:8  }],
+    dancing:    [{ x:46, y:8  }, { x:60, y:8  }],
+    sleeping:   [{ x:40, y:8  }],
+    napping:    [{ x:40, y:8  }],
+    _default:   [{ x:22, y:8  }, { x:42, y:28 }, { x:60, y:8  }],
+  },
+  bedroom: {
+    sleeping:   [{ x:5,  y:28 }],
+    napping:    [{ x:5,  y:28 }],
+    reading:    [{ x:49, y:28 }],
+    studying:   [{ x:49, y:28 }],
+    gaming:     [{ x:49, y:28 }],
+    sketching:  [{ x:49, y:28 }],
+    chatting:   [{ x:26, y:8  }, { x:46, y:8  }],
+    _default:   [{ x:20, y:8  }, { x:40, y:28 }, { x:56, y:8  }],
+  },
+}
+
+function _getSpot(normie, ss) {
+  if (ss.isOutdoor) return null
+  const roomId  = ss.sceneEl?.id?.replace('roomwrap-', '')
+  const roomRec = sceneCanvases.get(roomId)
+  if (!roomRec) return null
+  const spots = ROOM_ACTIVITY_SPOTS[roomRec.room.typeId]?.[normie.activity]
+    ?? ROOM_ACTIVITY_SPOTS[roomRec.room.typeId]?._default
+    ?? DEFAULT_SPOTS
+  return spots[normie.id % spots.length]
+}
+
 // ── Sprite state ───────────────────────────────────────────────────────────
 const spriteState = new Map()
 
@@ -749,7 +870,7 @@ export function placeSprite(normie, sceneEl) {
     cvs.style.top    = 'auto'
   } else {
     startX = 4 + Math.random() * (88 - SPRITE_W_PCT)
-    startY = 1 + Math.random() * 14
+    startY = 5
     cvs.style.left   = startX + '%'
     cvs.style.bottom = startY + '%'
     cvs.style.top    = 'auto'
@@ -759,16 +880,23 @@ export function placeSprite(normie, sceneEl) {
 
   const ss = {
     cvs, sceneEl,
-    x: startX, targetX: startX,
-    y: startY, targetY: startY,
+    x: startX,   targetX: startX,
+    y: startY,   targetY: startY,
     isOutdoor,
     dir: 'right',
-    walkPhase: Math.random(),
+    walkPhase: 0,
     zzzPhase: Math.random() * Math.PI * 2,
     _lastDraw: 0,
-    _moveTimer: 2 + Math.random() * 3,
+    _moveTimer: 1 + Math.random() * 2,
+    _atSpot: false,
   }
   spriteState.set(normie.id, ss)
+
+  // Point immediately toward activity spot for non-walk activities
+  if (!isOutdoor && !WALK_ACTS.has(normie.activity)) {
+    const spot = _getSpot(normie, ss)
+    if (spot) { ss.targetX = spot.x; ss.targetY = spot.y }
+  }
 
   _redrawSprite(normie, ss)
 
@@ -789,23 +917,33 @@ export function removeSprite(id) {
 export function onActivityChanged(normie) {
   const ss = spriteState.get(normie.id)
   if (!ss) return
+  ss._atSpot = false
   ss._moveTimer = 0
+  if (!ss.isOutdoor && !WALK_ACTS.has(normie.activity)) {
+    const spot = _getSpot(normie, ss)
+    if (spot) { ss.targetX = spot.x; ss.targetY = spot.y }
+  }
 }
 
 export function setSpriteScene(normie, newSceneEl) {
   const ss = spriteState.get(normie.id)
   if (!ss || !newSceneEl) return
   ss.cvs.remove()
-  ss.sceneEl = newSceneEl
+  ss.sceneEl  = newSceneEl  // must set BEFORE _getSpot
   ss.isOutdoor = newSceneEl.classList.contains('outdoor-wrap')
+  ss._atSpot  = false
+  ss._moveTimer = 0
 
   const container = ss.isOutdoor
     ? newSceneEl.querySelector('.out-objects') || newSceneEl
     : newSceneEl.querySelector('.room-scene') || newSceneEl
 
   if (ss.isOutdoor) {
-    ss.x = 30 + Math.random() * 660
-    ss.y = 15 + Math.random() * 40
+    // Enter from left or right edge of outdoor area
+    ss.x = Math.random() < 0.5 ? -20 : 740
+    ss.y = 15 + Math.random() * 30
+    ss.targetX = 60 + Math.random() * 580
+    ss.targetY = 15 + Math.random() * 40
     ss.cvs.style.left   = Math.round(ss.x) + 'px'
     ss.cvs.style.bottom = Math.round(ss.y) + 'px'
     ss.cvs.style.top    = 'auto'
@@ -813,16 +951,24 @@ export function setSpriteScene(normie, newSceneEl) {
     ss.cvs.style.height = ''
     container.style.position = 'relative'
   } else {
-    ss.x = 4 + Math.random() * (88 - SPRITE_W_PCT)
-    ss.y = 1 + Math.random() * 14
+    // Enter from left or right room edge
+    ss.x = Math.random() < 0.5 ? -20 : 90
+    ss.y = 6 + Math.random() * 6
+    if (!WALK_ACTS.has(normie.activity)) {
+      const spot = _getSpot(normie, ss)
+      if (spot) { ss.targetX = spot.x; ss.targetY = spot.y }
+      else      { ss.targetX = 4 + Math.random() * (88 - SPRITE_W_PCT); ss.targetY = 6 }
+    } else {
+      ss.targetX = 4 + Math.random() * (88 - SPRITE_W_PCT)
+      ss.targetY = 4 + Math.random() * 8
+    }
     ss.cvs.style.left   = ss.x + '%'
     ss.cvs.style.bottom = ss.y + '%'
     ss.cvs.style.top    = 'auto'
     ss.cvs.style.width  = SPRITE_W_PCT + '%'
     ss.cvs.style.height = 'auto'
   }
-  ss.targetX = ss.x
-  ss.targetY = ss.y
+  ss.walkPhase = 0.1 // start walking in
   container.appendChild(ss.cvs)
 }
 
@@ -831,46 +977,77 @@ export function animateSprites(normieMap, nightAlpha, dt) {
     const normie = normieMap.get(id)
     if (!normie) continue
 
-    const pose  = ACTIVITY_META[normie.activity]?.pose || 'stand'
-    const still = ['sleeping','napping'].includes(normie.activity)
+    const pose    = ACTIVITY_META[normie.activity]?.pose || 'stand'
+    const isSleep = pose === 'sleep'
+    const isWalk  = WALK_ACTS.has(normie.activity)
 
-    if (!still) {
-      ss.walkPhase = (ss.walkPhase + dt * 3.2) % 1
+    if (!isSleep) {
       ss._moveTimer -= dt
 
-      if (ss._moveTimer <= 0) {
-        if (ss.isOutdoor) {
-          ss.targetX = 20 + Math.random() * 680
-          ss.targetY = 10 + Math.random() * 80
-        } else {
-          ss.targetX = 4 + Math.random() * (88 - SPRITE_W_PCT)
-          ss.targetY = 1 + Math.random() * 14
+      if (isWalk) {
+        // Free wander: pick new random target on timer
+        ss.walkPhase = (ss.walkPhase + dt * 3.2) % 1
+        if (ss._moveTimer <= 0) {
+          if (ss.isOutdoor) {
+            ss.targetX = 20  + Math.random() * 680
+            ss.targetY = 10  + Math.random() * 80
+          } else {
+            ss.targetX = 4   + Math.random() * (88 - SPRITE_W_PCT)
+            ss.targetY = 3   + Math.random() * 10
+          }
+          ss._moveTimer = 3 + Math.random() * 4
         }
-        ss._moveTimer = 3 + Math.random() * 4
-      }
-
-      const dx = ss.targetX - ss.x
-      const dy = ss.targetY - ss.y
-      const dist = Math.hypot(dx, dy)
-      const spd  = ss.isOutdoor ? 30 * dt : 12 * dt
-
-      if (dist > (ss.isOutdoor ? 2 : 0.5)) {
-        ss.x += (dx / dist) * spd
-        ss.y += (dy / dist) * spd
-        ss.dir = Math.abs(dx) > Math.abs(dy) * 0.5 ? (dx < 0 ? 'left' : 'right') : (dy < 0 ? 'up' : 'down')
-      }
-
-      if (ss.isOutdoor) {
-        ss.cvs.style.left   = Math.round(ss.x) + 'px'
-        ss.cvs.style.bottom = Math.round(ss.y) + 'px'
+      } else if (!ss.isOutdoor) {
+        // Activity spot: keep re-targeting the spot each frame (smooth drift back if pushed)
+        if (!ss._atSpot) {
+          const spot = _getSpot(normie, ss)
+          if (spot) { ss.targetX = spot.x; ss.targetY = spot.y }
+        }
       } else {
-        ss.cvs.style.left   = ss.x + '%'
-        ss.cvs.style.bottom = ss.y + '%'
+        // Outdoor non-walk (meditating, reading outside, etc.): occasional slow re-position
+        if (ss._moveTimer <= 0) {
+          ss.targetX = 60  + Math.random() * 580
+          ss.targetY = 15  + Math.random() * 40
+          ss._moveTimer = 10 + Math.random() * 15
+        }
       }
-      ss.cvs.style.zIndex = String(ss.isOutdoor ? Math.floor(ss.y) : Math.floor(100 - ss.y))
     } else {
       ss.walkPhase = 0
+      ss._atSpot = true
     }
+
+    // ── Movement ────────────────────────────────────────────────────────────
+    const dx   = ss.targetX - ss.x
+    const dy   = ss.targetY - ss.y
+    const dist = Math.hypot(dx, dy)
+    const spd  = ss.isOutdoor ? 32 * dt : 15 * dt
+    const thresh = ss.isOutdoor ? 2 : 0.35
+
+    if (!isSleep && dist > thresh) {
+      ss.x += (dx / dist) * spd
+      ss.y += (dy / dist) * spd
+      if (Math.abs(dx) > 0.08) ss.dir = dx < 0 ? 'left' : 'right'
+      ss._atSpot = false
+      // Animate walk while navigating to spot (even for sit/stand activities)
+      if (!isWalk) ss.walkPhase = (ss.walkPhase + dt * 2.6) % 1
+    } else if (!isSleep && !isWalk) {
+      // Settled at spot — freeze walk animation, show activity pose
+      ss._atSpot  = true
+      ss.walkPhase = 0
+    }
+
+    // ── CSS position ────────────────────────────────────────────────────────
+    if (ss.isOutdoor) {
+      ss.cvs.style.left   = Math.round(ss.x) + 'px'
+      ss.cvs.style.bottom = Math.round(ss.y) + 'px'
+    } else {
+      ss.cvs.style.left   = ss.x.toFixed(2) + '%'
+      ss.cvs.style.bottom = ss.y.toFixed(2) + '%'
+    }
+    // Depth sort: higher y (further back) = lower z-index
+    ss.cvs.style.zIndex = String(ss.isOutdoor
+      ? Math.floor(ss.y)
+      : Math.floor(100 - ss.y))
 
     if (pose === 'sleep') ss.zzzPhase = ((ss.zzzPhase || 0) + dt * 1.4) % (Math.PI * 8)
 
@@ -888,8 +1065,12 @@ function _redrawSprite(normie, ss, nightAlpha = 0) {
   ctx.clearRect(0, 0, ss.cvs.width, ss.cvs.height)
   ctx.save()
   ctx.scale(NORMIE_SCALE, NORMIE_SCALE)
-  const pose = ACTIVITY_META[normie.activity]?.pose || 'stand'
-  drawNormieSprite(ctx, normie.id, pose, ss.walkPhase, { direction: ss.dir })
+
+  const basePose    = ACTIVITY_META[normie.activity]?.pose || 'stand'
+  // While walking to a spot, show walk animation regardless of target pose
+  const displayPose = (!ss._atSpot && ss.walkPhase > 0.01) ? 'walk' : basePose
+
+  drawNormieSprite(ctx, normie.id, displayPose, ss.walkPhase, { direction: ss.dir })
   ctx.restore()
 
   const tint = ss.isOutdoor ? nightAlpha : nightAlpha * 0.15
@@ -898,7 +1079,7 @@ function _redrawSprite(normie, ss, nightAlpha = 0) {
     ctx.fillRect(0, 0, ss.cvs.width, ss.cvs.height)
   }
 
-  if (pose === 'sleep') drawZzz(ctx, ss.zzzPhase || 0, ss.cvs.width)
+  if (basePose === 'sleep') drawZzz(ctx, ss.zzzPhase || 0, ss.cvs.width)
 }
 
 // ── Night overlay on room canvases ─────────────────────────────────────────
