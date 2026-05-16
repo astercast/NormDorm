@@ -1,5 +1,5 @@
 // Full-body normie sprites — API overlay + procedural fallback
-const FULLNORM = 'https://fullynormies.vercel.app/api/v1'
+const FULLNORM = 'https://fullnormies.vercel.app/api/v1'
 
 const metaCache  = new Map()   // id → meta object
 const frameCache = new Map()   // `${id}:${pose}:${frame}` → HTMLImageElement | null

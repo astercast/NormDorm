@@ -52,6 +52,11 @@ export function updateComboMeter(combo, maxCombo) {
   const el = document.getElementById('combo-meter'); if (!el) return
   el.style.display = 'flex'
   el.classList.toggle('combo-active', combo > 1)
+  el.classList.remove('combo-lvl1', 'combo-lvl2', 'combo-lvl3', 'combo-lvl4')
+  if (combo >= 2) {
+    const lvl = combo >= 8 ? 4 : combo >= 5 ? 3 : combo >= 3 ? 2 : 1
+    el.classList.add(`combo-lvl${lvl}`)
+  }
   el.querySelector('#combo-val').textContent = combo > 1 ? `×${combo}` : 'CLICK'
   const bar = el.querySelector('#combo-bar')
   if (bar) bar.style.width = combo > 1 ? `${(combo / maxCombo) * 100}%` : '0%'
