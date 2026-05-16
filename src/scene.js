@@ -1,6 +1,5 @@
 import { ACTIVITY_META } from './constants.js'
-import { drawNormieSprite, SPRITE_W, SPRITE_H } from './pixel-renderer.js'
-import { TILE_MAP, ROOM_LAYOUTS } from './tilemap.js'
+import { drawNormieSprite, drawZzz, SPRITE_W, SPRITE_H } from './pixel-renderer.js'
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const TILE    = 16
@@ -11,39 +10,259 @@ const ROOM_TILES_W = 10
 const ROOM_TILES_H = 7
 const ROOM_W = ROOM_TILES_W * TS   // 320px
 const ROOM_H = ROOM_TILES_H * TS   // 224px
+const WALL_H = TS * 2
 
-// Light, warm room palettes — always light, unaffected by dark mode
-const WALL_COLORS  = { bedroom:'#e8e2d8', study:'#e4dfd4', gaming:'#dde0e6', kitchen:'#ede8e0', chill:'#e6e0d6', gym:'#e0e4e2', library:'#e2ddd4', music:'#e4dee6', art:'#eae4dc' }
-const FLOOR_COLORS = { bedroom:'#f5f0e8', study:'#f0ece2', gaming:'#eaecf0', kitchen:'#f4f0e8', chill:'#f2eee4', gym:'#eef0ee', library:'#eeead0', music:'#f0ecf2', art:'#f4f0e6' }
-const ACCENT_COLORS= { bedroom:'#d8d0c4', study:'#d4cec0', gaming:'#c8ccd4', kitchen:'#dcd6cc', chill:'#d6d0c4', gym:'#d0d4d2', library:'#d4d0c0', music:'#d6d0d8', art:'#dcd6cc' }
-const NORMIE_SCALE = 1.5
-const SPRITE_W_PCT = (SPRITE_W * NORMIE_SCALE) / ROOM_W * 100
+const NORMIE_SCALE  = 1.5
+const SPRITE_W_PCT  = (SPRITE_W * NORMIE_SCALE) / ROOM_W * 100
+// CSS height = auto; aspect ratio = SPRITE_W:SPRITE_H so CSS height ≈ SPRITE_W_PCT * (SPRITE_H/SPRITE_W)%
 
-// ── Tileset — load in full colour ──────────────────────────────────────────
-let _sheet = null
-
-function _loadSheet() {
-  return new Promise(resolve => {
-    if (_sheet) { resolve(_sheet); return }
-    const img = new Image()
-    img.onload = () => { _sheet = img; resolve(_sheet) }
-    img.onerror = () => { console.warn('Tileset failed to load'); resolve(null) }
-    img.src = '/tileset.jpg'
-  })
+// Monochrome room identity — each type reads as a distinct “set” at a glance
+const MONO = {
+  study:   { wall: '#cecece', floor: '#eaeaea', line: '#9a9a9a', ink: '#0f0f0f', soft: '#6a6a6a' },
+  gaming:  { wall: '#c6c6c6', floor: '#e4e4e4', line: '#8e8e8e', ink: '#0a0a0a', soft: '#585858' },
+  chill:   { wall: '#d2d2d2', floor: '#eeeeee', line: '#a2a2a2', ink: '#121212', soft: '#646464' },
+  gym:     { wall: '#bfbfbf', floor: '#e2e2e2', line: '#888888', ink: '#080808', soft: '#505050' },
+  library: { wall: '#c9c9c9', floor: '#e8e8e8', line: '#949494', ink: '#101010', soft: '#5c5c5c' },
+  music:   { wall: '#cbcbcb', floor: '#ebebeb', line: '#989898', ink: '#0c0c0c', soft: '#626262' },
+  kitchen: { wall: '#c4c4c4', floor: '#e6e6e6', line: '#909090', ink: '#0e0e0e', soft: '#565656' },
+  art:     { wall: '#d0d0d0', floor: '#efefef', line: '#9e9e9e', ink: '#111111', soft: '#686868' },
+  bedroom: { wall: '#d4d4d4', floor: '#ececec', line: '#a0a0a0', ink: '#111111', soft: '#666666' },
 }
 
-function _drawSprite(ctx, name, dx, dy, alpha = 1) {
-  if (!_sheet) return
-  const t = TILE_MAP[name]
-  if (!t) return
-  const [sx, sy, sw, sh] = t
-  const dw = sw * SCALE
-  const dh = sh * SCALE
-  const prev = ctx.globalAlpha
-  ctx.globalAlpha = alpha
-  ctx.imageSmoothingEnabled = false
-  ctx.drawImage(_sheet, sx, sy, sw, sh, dx, dy, dw, dh)
-  ctx.globalAlpha = prev
+function _floorGrid(ctx, C, step = TS) {
+  ctx.strokeStyle = C.line
+  ctx.globalAlpha = 0.35
+  ctx.lineWidth = 0.5
+  for (let x = 0; x <= ROOM_W; x += step) {
+    ctx.beginPath(); ctx.moveTo(x, WALL_H); ctx.lineTo(x, ROOM_H); ctx.stroke()
+  }
+  for (let y = WALL_H; y <= ROOM_H; y += step) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(ROOM_W, y); ctx.stroke()
+  }
+  ctx.globalAlpha = 1
+}
+
+function _windowFrame(ctx, x, y, w, h, C) {
+  ctx.fillStyle = C.soft
+  ctx.fillRect(x, y, w, h)
+  ctx.strokeStyle = C.ink
+  ctx.lineWidth = 2
+  ctx.strokeRect(x + 1, y + 1, w - 2, h - 2)
+  ctx.beginPath()
+  ctx.lineWidth = 1
+  ctx.strokeStyle = C.line
+  ctx.moveTo(x + w / 2, y + 2); ctx.lineTo(x + w / 2, y + h - 2)
+  ctx.moveTo(x + 2, y + h / 2); ctx.lineTo(x + w - 2, y + h / 2)
+  ctx.stroke()
+}
+
+function _drawStudy(ctx, C) {
+  _floorGrid(ctx, C, TS)
+  for (let i = 0; i < 5; i++) {
+    ctx.fillStyle = C.ink
+    ctx.fillRect(24 + i * 52, 10, 44, 3)
+    ctx.fillStyle = C.soft
+    ctx.fillRect(26 + i * 52, 13, 8, 2)
+  }
+  _windowFrame(ctx, 108, 6, 104, 52, C)
+  ctx.fillStyle = C.ink
+  ctx.fillRect(16, 72, 112, 8)
+  ctx.fillRect(16, 80, 8, 40)
+  ctx.fillRect(120, 72, 8, 48)
+  ctx.beginPath()
+  ctx.fillStyle = C.soft
+  ctx.arc(148, 132, 14, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.fillStyle = C.ink
+  ctx.fillRect(200, 64, 6, 36)
+  ctx.beginPath(); ctx.arc(203, 58, 10, 0, Math.PI * 2); ctx.fill()
+}
+
+function _drawGaming(ctx, C) {
+  ctx.strokeStyle = C.line
+  ctx.globalAlpha = 0.4
+  for (let y = WALL_H + 8; y < ROOM_H; y += 14)
+    for (let x = 8; x < ROOM_W; x += 14) {
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 10, y); ctx.stroke()
+    }
+  ctx.globalAlpha = 1
+  _windowFrame(ctx, 56, 8, 48, 48, C)
+  ctx.fillStyle = C.ink
+  ctx.fillRect(72, 36, 176, 68)
+  ctx.fillStyle = C.floor
+  ctx.fillRect(80, 44, 160, 52)
+  ctx.fillStyle = C.soft
+  ctx.fillRect(88, 52, 24, 18)
+  ctx.fillRect(208, 52, 24, 18)
+  ctx.fillStyle = C.ink
+  ctx.fillRect(40, 120, 96, 20)
+  ctx.fillRect(48, 116, 80, 8)
+  ctx.fillRect(184, 124, 96, 16)
+}
+
+function _drawChill(ctx, C) {
+  ctx.strokeStyle = C.line
+  ctx.globalAlpha = 0.25
+  for (let y = WALL_H; y < ROOM_H; y += 8) {
+    ctx.beginPath()
+    for (let x = -20; x < ROOM_W + 20; x += 16) {
+      ctx.moveTo(x, y); ctx.lineTo(x + 12, y + 8); ctx.lineTo(x + 24, y)
+    }
+    ctx.stroke()
+  }
+  ctx.globalAlpha = 1
+  _windowFrame(ctx, 88, 6, 96, 56, C)
+  ctx.strokeStyle = C.ink
+  ctx.lineWidth = 3
+  ctx.strokeRect(96, 100, 128, 72)
+  ctx.lineWidth = 1
+  ctx.fillStyle = C.soft
+  ctx.fillRect(40, 132, 56, 28)
+  ctx.fillStyle = C.ink
+  ctx.fillRect(132, 48, 56, 36)
+  ctx.fillRect(168, 44, 8, 8)
+  ctx.beginPath()
+  ctx.arc(244, 140, 22, 0, Math.PI * 2)
+  ctx.strokeStyle = C.ink
+  ctx.lineWidth = 2
+  ctx.stroke()
+}
+
+function _drawGym(ctx, C) {
+  ctx.fillStyle = C.line
+  ctx.globalAlpha = 0.15
+  for (let y = WALL_H + 10; y < ROOM_H; y += 20)
+    for (let x = 10 + (y % 40 ? 0 : 10); x < ROOM_W; x += 20) {
+      ctx.beginPath(); ctx.arc(x, y, 2, 0, Math.PI * 2); ctx.fill()
+    }
+  ctx.globalAlpha = 1
+  _windowFrame(ctx, 40, 6, 88, 52, C)
+  _windowFrame(ctx, 184, 6, 88, 52, C)
+  ctx.fillStyle = C.ink
+  ctx.fillRect(24, 52, 272, 4)
+  ctx.fillRect(140, 44, 40, 64)
+  ctx.fillStyle = C.soft
+  ctx.fillRect(144, 48, 32, 54)
+  ctx.fillStyle = C.ink
+  ctx.fillRect(96, 108, 128, 56)
+  ctx.strokeStyle = C.ink
+  ctx.lineWidth = 2
+  ctx.beginPath(); ctx.arc(160, 136, 18, 0, Math.PI * 2); ctx.stroke()
+}
+
+function _drawLibrary(ctx, C) {
+  _floorGrid(ctx, C, TS / 2)
+  for (let col = 0; col < 11; col++) {
+    ctx.fillStyle = col % 3 === 0 ? C.ink : C.soft
+    const x = 8 + col * 26
+    ctx.fillRect(x, 8, 20, 56)
+    for (let r = 0; r < 8; r++)
+      ctx.fillRect(x + 3, 14 + r * 6, 14, 2)
+  }
+  _windowFrame(ctx, 118, 6, 84, 40, C)
+  ctx.fillStyle = C.ink
+  ctx.fillRect(88, 88, 144, 10)
+  ctx.fillRect(88, 98, 12, 44)
+  ctx.fillRect(220, 98, 12, 44)
+  ctx.fillStyle = C.soft
+  ctx.beginPath(); ctx.arc(160, 152, 16, 0, Math.PI * 2); ctx.fill()
+}
+
+function _drawMusic(ctx, C) {
+  ctx.strokeStyle = C.line
+  ctx.globalAlpha = 0.35
+  for (let i = 0; i < 28; i++) {
+    const x = 12 + i * 11
+    ctx.beginPath()
+    ctx.moveTo(x, ROOM_H)
+    for (let w = 0; w < 9; w++) ctx.lineTo(x + w * 6, WALL_H + 40 + Math.sin((i + w) * 0.7) * 28)
+    ctx.stroke()
+  }
+  ctx.globalAlpha = 1
+  _windowFrame(ctx, 100, 6, 120, 52, C)
+  ctx.fillStyle = C.ink
+  ctx.fillRect(40, 44, 28, 40)
+  ctx.fillRect(252, 44, 28, 40)
+  ctx.fillRect(56, 132, 96, 20)
+  ctx.fillRect(176, 132, 96, 20)
+  ctx.fillStyle = C.soft
+  ctx.fillRect(136, 112, 48, 4)
+  ctx.strokeStyle = C.ink
+  ctx.beginPath(); ctx.moveTo(160, 112); ctx.lineTo(160, 64); ctx.stroke()
+  ctx.beginPath(); ctx.arc(160, 58, 7, 0, Math.PI * 2); ctx.fillStyle = C.ink; ctx.fill()
+}
+
+function _drawKitchen(ctx, C) {
+  ctx.strokeStyle = C.line
+  ctx.globalAlpha = 0.3
+  for (let y = WALL_H + 6; y < ROOM_H; y += 12)
+    for (let x = 4; x < ROOM_W; x += 12) {
+      ctx.strokeRect(x, y, 10, 10)
+    }
+  ctx.globalAlpha = 1
+  _windowFrame(ctx, 120, 8, 80, 48, C)
+  ctx.fillStyle = C.soft
+  ctx.fillRect(8, 40, 200, 14)
+  ctx.fillRect(8, 54, 14, 8)
+  ctx.fillStyle = C.ink
+  ctx.fillRect(52, 46, 36, 4)
+  ctx.fillRect(108, 46, 40, 4)
+  ctx.beginPath(); ctx.arc(72, 50, 6, 0, Math.PI * 2); ctx.fill()
+  ctx.beginPath(); ctx.arc(130, 50, 6, 0, Math.PI * 2); ctx.fill()
+  ctx.fillRect(248, 34, 56, 72)
+  ctx.fillRect(96, 108, 128, 12)
+  ctx.fillStyle = C.soft
+  for (const [x, y] of [[88, 124], [152, 124], [88, 92], [152, 92]])
+    ctx.fillRect(x, y, 16, 12)
+}
+
+function _drawArt(ctx, C) {
+  ctx.fillStyle = C.line
+  ctx.globalAlpha = 0.12
+  const seeded = (n) => ((Math.sin(n * 12.9898) * 43758.5453) % 1 + 1) % 1
+  for (let i = 0; i < 120; i++) {
+    const x = seeded(i) * ROOM_W
+    const y = WALL_H + seeded(i + 17) * (ROOM_H - WALL_H)
+    ctx.fillRect(x, y, 2, 2)
+  }
+  ctx.globalAlpha = 1
+  _windowFrame(ctx, 96, 6, 128, 52, C)
+  ctx.strokeStyle = C.ink
+  ctx.lineWidth = 2
+  ctx.beginPath()
+  ctx.moveTo(178, 160); ctx.lineTo(160, 64); ctx.lineTo(142, 160)
+  ctx.stroke()
+  ctx.lineWidth = 3
+  ctx.beginPath(); ctx.moveTo(150, 72); ctx.lineTo(170, 72); ctx.stroke()
+  ctx.lineWidth = 2
+  ctx.strokeRect(32, 76, 72, 56)
+  ctx.fillStyle = C.soft
+  ctx.fillRect(38, 82, 60, 44)
+  ctx.fillStyle = C.ink
+  ctx.fillRect(12, 96, 88, 10)
+  ctx.fillRect(200, 88, 48, 64)
+}
+
+function _drawBedroom(ctx, C) {
+  _floorGrid(ctx, C)
+  _windowFrame(ctx, 104, 6, 112, 52, C)
+  ctx.fillStyle = C.ink
+  ctx.fillRect(48, 56, 144, 36)
+  ctx.fillStyle = C.soft
+  ctx.fillRect(52, 60, 136, 8)
+  ctx.fillStyle = C.ink
+  ctx.fillRect(208, 68, 20, 24)
+  ctx.fillRect(72, 64, 8, 10)
+  ctx.fillRect(232, 40, 64, 96)
+  ctx.fillRect(16, 80, 40, 56)
+  ctx.fillStyle = C.line
+  ctx.fillRect(108, 124, 72, 56)
+}
+
+const ROOM_DRAW = {
+  study: _drawStudy, gaming: _drawGaming, chill: _drawChill, gym: _drawGym,
+  library: _drawLibrary, music: _drawMusic, kitchen: _drawKitchen, art: _drawArt,
+  bedroom: _drawBedroom,
 }
 
 // ── Sprite state ───────────────────────────────────────────────────────────
@@ -54,7 +273,6 @@ const sceneCanvases = new Map()
 
 // ── Build dorm (3-col grid + outdoor spanning full width) ──────────────────
 export async function buildDorm(rooms) {
-  await _loadSheet()
   sceneCanvases.clear()
 
   const wrap = document.createElement('div')
@@ -117,46 +335,26 @@ function _roomIcon(typeId) {
   return icons[typeId] || '🏠'
 }
 
-// ── Draw a room onto its canvas — LIGHT palette ────────────────────────────
+// ── Draw room — procedural monochrome (no tileset) ─────────────────────────
 function _drawRoom(ctx, room) {
   const theme = room.typeId
+  const C = MONO[theme] || MONO.study
   ctx.imageSmoothingEnabled = false
 
-  // Light floor
-  ctx.fillStyle = FLOOR_COLORS[theme] || '#f0ece4'
-  ctx.fillRect(0, 0, ROOM_W, ROOM_H)
+  ctx.fillStyle = C.floor
+  ctx.fillRect(0, WALL_H, ROOM_W, ROOM_H - WALL_H)
 
-  // Subtle floor grid
-  ctx.strokeStyle = ACCENT_COLORS[theme] || '#ddd'
-  ctx.lineWidth = 0.5
-  for (let tx = 0; tx <= ROOM_TILES_W; tx++) {
-    ctx.beginPath(); ctx.moveTo(tx * TS, TS * 2); ctx.lineTo(tx * TS, ROOM_H); ctx.stroke()
-  }
-  for (let ty = 2; ty <= ROOM_TILES_H; ty++) {
-    ctx.beginPath(); ctx.moveTo(0, ty * TS); ctx.lineTo(ROOM_W, ty * TS); ctx.stroke()
-  }
+  ctx.fillStyle = C.wall
+  ctx.fillRect(0, 0, ROOM_W, WALL_H)
 
-  // Back wall — lighter
-  ctx.fillStyle = WALL_COLORS[theme] || '#e8e4dc'
-  ctx.fillRect(0, 0, ROOM_W, TS * 2)
+  const draw = ROOM_DRAW[theme] || ROOM_DRAW.study
+  draw(ctx, C)
 
-  // Wall bottom border (baseboard line)
-  ctx.fillStyle = ACCENT_COLORS[theme] || '#d0ccc0'
-  ctx.fillRect(0, TS * 2 - 2, ROOM_W, 2)
-
-  // Top edge
-  ctx.fillStyle = '#d0ccc0'
+  ctx.fillStyle = C.soft
+  ctx.fillRect(0, WALL_H - 2, ROOM_W, 2)
+  ctx.fillStyle = C.ink
   ctx.fillRect(0, 0, ROOM_W, 1)
-
-  // Bottom skirting
-  ctx.fillStyle = ACCENT_COLORS[theme] || '#d0ccc0'
   ctx.fillRect(0, ROOM_H - 2, ROOM_W, 2)
-
-  // Draw furniture from layout
-  const layout = ROOM_LAYOUTS[theme] || ROOM_LAYOUTS.bedroom
-  for (const item of layout) {
-    _drawSprite(ctx, item.sprite, item.x, item.y)
-  }
 }
 
 // ── Outdoor DOM ────────────────────────────────────────────────────────────
@@ -275,11 +473,11 @@ export function placeSprite(normie, sceneEl) {
     cvs.style.bottom = Math.round(startY) + 'px'
     cvs.style.top    = 'auto'
   } else {
-    startX = 5 + Math.random() * (85 - SPRITE_W_PCT)
-    startY = 28 + Math.random() * 45
+    startX = 4 + Math.random() * (88 - SPRITE_W_PCT)
+    startY = 1 + Math.random() * 14          // bottom % — keeps feet on the floor
     cvs.style.left   = startX + '%'
-    cvs.style.top    = startY + '%'
-    cvs.style.bottom = 'auto'
+    cvs.style.bottom = startY + '%'
+    cvs.style.top    = 'auto'
     cvs.style.width  = SPRITE_W_PCT + '%'
     cvs.style.height = 'auto'
   }
@@ -340,11 +538,11 @@ export function setSpriteScene(normie, newSceneEl) {
     ss.cvs.style.height = ''
     container.style.position = 'relative'
   } else {
-    ss.x = 5 + Math.random() * (85 - SPRITE_W_PCT)
-    ss.y = 28 + Math.random() * 45
+    ss.x = 4 + Math.random() * (88 - SPRITE_W_PCT)
+    ss.y = 1 + Math.random() * 14
     ss.cvs.style.left   = ss.x + '%'
-    ss.cvs.style.top    = ss.y + '%'
-    ss.cvs.style.bottom = 'auto'
+    ss.cvs.style.bottom = ss.y + '%'
+    ss.cvs.style.top    = 'auto'
     ss.cvs.style.width  = SPRITE_W_PCT + '%'
     ss.cvs.style.height = 'auto'
   }
@@ -367,12 +565,12 @@ export function animateSprites(normieMap, nightAlpha, dt) {
 
       if (ss._moveTimer <= 0) {
         if (ss.isOutdoor) {
-          ss.targetX = 20 + Math.random() * 680
-          ss.targetY = 10 + Math.random() * 80
-        } else {
-          ss.targetX = 3 + Math.random() * (87 - SPRITE_W_PCT)
-          ss.targetY = 25 + Math.random() * 50
-        }
+        ss.targetX = 20 + Math.random() * 680
+        ss.targetY = 10 + Math.random() * 80
+      } else {
+        ss.targetX = 4 + Math.random() * (88 - SPRITE_W_PCT)
+        ss.targetY = 1 + Math.random() * 14
+      }
         ss._moveTimer = 3 + Math.random() * 4
       }
 
@@ -391,10 +589,10 @@ export function animateSprites(normieMap, nightAlpha, dt) {
         ss.cvs.style.left   = Math.round(ss.x) + 'px'
         ss.cvs.style.bottom = Math.round(ss.y) + 'px'
       } else {
-        ss.cvs.style.left = ss.x + '%'
-        ss.cvs.style.top  = ss.y + '%'
+        ss.cvs.style.left   = ss.x + '%'
+        ss.cvs.style.bottom = ss.y + '%'
       }
-      ss.cvs.style.zIndex = String(Math.floor(ss.y))
+      ss.cvs.style.zIndex = String(ss.isOutdoor ? Math.floor(ss.y) : Math.floor(100 - ss.y))
     } else {
       ss.walkPhase = 0
     }
@@ -418,10 +616,18 @@ function _redrawSprite(normie, ss, nightAlpha = 0) {
   const pose = ACTIVITY_META[normie.activity]?.pose || 'stand'
   drawNormieSprite(ctx, normie.id, pose, ss.walkPhase, {
     direction: ss.dir,
-    nightAlpha,
-    zzzPhase: pose === 'sleep' ? ss.zzzPhase : undefined,
   })
   ctx.restore()
+
+  const tint = ss.isOutdoor ? nightAlpha : nightAlpha * 0.15
+  if (tint > 0) {
+    ctx.fillStyle = `rgba(0,0,0,${(tint * 0.4).toFixed(3)})`
+    ctx.fillRect(0, 0, ss.cvs.width, ss.cvs.height)
+  }
+
+  if (pose === 'sleep') {
+    drawZzz(ctx, ss.zzzPhase || 0, ss.cvs.width)
+  }
 }
 
 // ── Night overlay on room canvases ─────────────────────────────────────────
@@ -436,7 +642,7 @@ export function updateDayNight(gameMinute) {
   for (const [roomId, { canvas, ctx, room }] of sceneCanvases) {
     _drawRoom(ctx, room)
     if (night > 0) {
-      ctx.fillStyle = `rgba(15, 20, 45, ${(night * 0.10).toFixed(3)})`
+      ctx.fillStyle = `rgba(0, 0, 0, ${(night * 0.12).toFixed(3)})`
       ctx.fillRect(0, 0, canvas.width, canvas.height)
     }
   }

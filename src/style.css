@@ -128,19 +128,50 @@ code { font-family:var(--font-mono); background:var(--bg2); padding:1px 5px; fon
 .dorm-layout { flex:1; display:grid; grid-template-columns:1fr 240px; min-height:0 }
 .dorm-main { overflow-y:auto; padding:16px; background:var(--bg); position:relative }
 
-/* ── CONNECT SCREEN ────────────────────────────────────────────── */
+/* ── CONNECT / HOMEPAGE ──────────────────────────────────────────── */
+.connect-page {
+  flex:1; display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  padding:40px 20px; gap:28px; text-align:center; min-height:80vh;
+}
+.connect-brand { display:flex; flex-direction:column; align-items:center; gap:6px }
+.connect-logo  { font-size:36px; font-weight:700; letter-spacing:5px; font-family:var(--font-mono) }
+.connect-tagline { font-size:11px; color:var(--text3); letter-spacing:3px; text-transform:uppercase; font-family:var(--font-mono) }
+
+.connect-glyph {
+  display:block;
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  background:var(--bg2);
+  image-rendering:pixelated;
+  max-width:100%;
+}
+
+.connect-lookup {
+  display:flex; flex-direction:column; align-items:center;
+  gap:14px; width:100%; max-width:500px;
+}
+.lookup-row {
+  display:flex; gap:8px; width:100%;
+}
+.addr-input {
+  flex:1; font-family:var(--font-mono); font-size:13px;
+  padding:11px 14px; background:var(--bg2); border:1px solid var(--border2);
+  border-radius:var(--radius-sm); color:var(--text); outline:none;
+  transition:border-color .15s;
+}
+.addr-input:focus { border-color:var(--border3) }
+.addr-input::placeholder { color:var(--text3) }
+.btn-load { white-space:nowrap; letter-spacing:1px; font-size:12px; font-weight:600 }
+.btn-outline { background:none; border:1px solid var(--border2) }
+.btn-outline:hover { background:var(--bg2) }
+.lookup-divider { font-size:11px; color:var(--text3); letter-spacing:2px }
+.connect-footer { font-size:11px; color:var(--text3); letter-spacing:.5px; font-family:var(--font-mono) }
+
+/* Legacy connect-screen — kept for renderHowItWorks compatibility */
 .connect-screen { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px 20px; gap:20px; text-align:center }
-.connect-hero { width:120px; height:80px; border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; background:var(--bg2) }
-.hero-pixel-grid { display:grid; grid-template-columns:repeat(14,1fr); width:100%; height:100% }
-.hero-cell { background:var(--bg3); animation:heroBlink 4s steps(2) infinite }
-.hero-cell.on { background:var(--accent2) }
-@keyframes heroBlink { 0%,100%{opacity:1} 50%{opacity:.2} }
 .connect-title { font-size:28px; font-weight:700; letter-spacing:3px }
 .connect-sub { font-size:15px; color:var(--text2); line-height:1.7; max-width:440px }
-.connect-btns { display:flex; gap:10px; flex-wrap:wrap; justify-content:center }
-.connect-hint { font-size:12px; color:var(--text3) }
-.connect-features { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; max-width:480px }
-.feat { font-size:12px; color:var(--text2); background:var(--panel); border:1px solid var(--border); padding:5px 12px; border-radius:var(--radius) }
 
 /* Loading */
 .load-text { font-size:13px; font-weight:600; letter-spacing:1px }
@@ -166,30 +197,30 @@ code { font-family:var(--font-mono); background:var(--bg2); padding:1px 5px; fon
 
 .room-wrap {
   position:relative;
-  background:#faf8f4;
-  border:1px solid #e0dcd4;
+  background:#ebebeb;
+  border:1px solid #b0b0b0;
   border-radius:12px;
   overflow:hidden;
-  box-shadow:0 2px 8px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+  box-shadow:0 2px 10px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
   color-scheme:light;
   transition:box-shadow .2s, transform .2s;
 }
 .room-wrap:hover {
-  box-shadow:0 4px 16px rgba(0,0,0,.1), 0 1px 3px rgba(0,0,0,.06);
+  box-shadow:0 4px 18px rgba(0,0,0,.12), 0 1px 3px rgba(0,0,0,.08);
   transform:translateY(-1px);
 }
 
 .room-strip {
   display:flex; align-items:center; gap:6px;
   padding:6px 10px;
-  background:#f4f0ea;
-  border-bottom:1px solid #e4e0d8;
+  background:#dcdcdc;
+  border-bottom:1px solid #b8b8b8;
   font-size:11px; font-weight:600;
   position:relative; z-index:2;
 }
 .rs-icon { font-size:13px }
-.rs-name { color:#4a4640; flex:1; font-weight:600; letter-spacing:.02em; font-size:11px }
-.rs-occ  { color:#8a8680; font-size:11px; font-family:var(--font-mono); font-weight:400 }
+.rs-name { color:#1e1e1e; flex:1; font-weight:600; letter-spacing:.02em; font-size:11px }
+.rs-occ  { color:#5a5a5a; font-size:11px; font-family:var(--font-mono); font-weight:400 }
 
 .room-scene {
   position:relative;
@@ -205,25 +236,25 @@ code { font-family:var(--font-mono); background:var(--bg2); padding:1px 5px; fon
 }
 
 .outdoor-wrap {
-  background:linear-gradient(180deg, #c8dce8 0%, #d8e4d0 100%);
-  border:1px solid #c0d0c8;
+  background:linear-gradient(180deg, #c6c6c6 0%, #b4b4b4 100%);
+  border:1px solid #989898;
   border-radius:var(--radius);
   overflow:hidden;
 }
 .outdoor-strip {
-  background:rgba(255,255,255,.5);
-  border-bottom:1px solid rgba(0,0,0,.06);
+  background:rgba(240,240,240,.85);
+  border-bottom:1px solid #888888;
 }
 
 .outdoor-scene { position:relative; height:200px; overflow:hidden }
 
 .out-sky {
   position:absolute; inset:0;
-  background:linear-gradient(180deg,#a8c8e8 0%,#c0d8e8 60%,#d0e0d4 100%);
+  background:linear-gradient(180deg,#b8b8b8 0%,#c8c8c8 60%,#bababa 100%);
   transition:background 3s ease;
 }
-.out-sky[data-time="dusk"]  { background:linear-gradient(180deg,#8090a0 0%,#a0a0a0 50%,#b0b8a8 100%) }
-.out-sky[data-time="night"] { background:linear-gradient(180deg,#101828 0%,#182030 60%,#1a2028 100%) }
+.out-sky[data-time="dusk"]  { background:linear-gradient(180deg,#909090 0%,#a0a0a0 50%,#989898 100%) }
+.out-sky[data-time="night"] { background:linear-gradient(180deg,#222222 0%,#2a2a2a 60%,#303030 100%) }
 
 .star { position:absolute; border-radius:50%; opacity:0; transition:opacity 2s }
 .ss0 { width:2px; height:2px; background:#f0f0f0 }
@@ -233,17 +264,17 @@ code { font-family:var(--font-mono); background:var(--bg2); padding:1px 5px; fon
 @keyframes twinkle { 0%,100%{opacity:1} 50%{opacity:.1} }
 
 .moon { position:absolute; right:55px; top:12px; font-size:22px; opacity:0; color:#e0e0e0; transition:opacity 3s }
-.out-sun { position:absolute; right:70px; top:10px; width:22px; height:22px; border-radius:50%; background:radial-gradient(circle,#fff8e0,#f0e0a0,transparent); box-shadow:0 0 16px 6px rgba(255,240,180,.3); transition:opacity 2s }
+.out-sun { position:absolute; right:70px; top:10px; width:22px; height:22px; border-radius:50%; background:radial-gradient(circle,#f0f0f0,#c8c8c8,transparent); box-shadow:0 0 12px 4px rgba(220,220,220,.35); transition:opacity 2s }
 
-.bg-skyline { position:absolute; bottom:0; left:0; right:0; display:flex; align-items:flex-end; gap:4px; padding:0 20px; opacity:.15 }
-.skyline-bldg { flex:1; background:#607080; border:1px solid #506070 }
+.bg-skyline { position:absolute; bottom:0; left:0; right:0; display:flex; align-items:flex-end; gap:4px; padding:0 20px; opacity:.2 }
+.skyline-bldg { flex:1; background:#707070; border:1px solid #606060 }
 
 .out-ground {
   position:absolute; bottom:0; left:0; right:0; height:60px;
-  background:linear-gradient(180deg,#90b080 0%,#78a068 100%);
-  border-top:2px solid #a0c890; transition:background 3s;
+  background:linear-gradient(180deg,#8a8a8a 0%,#707070 100%);
+  border-top:2px solid #9a9a9a; transition:background 3s;
 }
-.out-ground[data-time="night"] { background:linear-gradient(180deg,#283828 0%,#1a2818 100%); border-top-color:#385038 }
+.out-ground[data-time="night"] { background:linear-gradient(180deg,#3a3a3a 0%,#2a2a2a 100%); border-top-color:#505050 }
 .out-ground::before { content:''; position:absolute; top:0; left:0; right:0; height:4px; background:repeating-linear-gradient(90deg,transparent 0,transparent 8px,rgba(255,255,255,.1) 8px,rgba(255,255,255,.1) 9px) }
 
 .out-path { position:absolute; bottom:52px; left:50%; transform:translateX(-50%); width:120px; height:4px; background:linear-gradient(90deg,transparent,#c8c0b0,#c0b8a8,transparent); border-radius:2px }
@@ -252,12 +283,12 @@ code { font-family:var(--font-mono); background:var(--bg2); padding:1px 5px; fon
 /* Trees */
 .out-tree { position:absolute; bottom:58px; display:flex; flex-direction:column; align-items:center }
 .oak-canopy { position:relative; width:40px; height:40px }
-.oak-canopy::before { content:''; position:absolute; inset:0; border-radius:50%; background:radial-gradient(circle,#70a860 30%,#508040 80%,#406030 100%) }
+.oak-canopy::before { content:''; position:absolute; inset:0; border-radius:50%; background:radial-gradient(circle,#888888 30%,#686868 80%,#505050 100%) }
 .oak-hi { position:absolute; top:5px; left:7px; width:12px; height:12px; border-radius:50%; background:rgba(255,255,255,.15) }
 .oak-trunk { width:7px; height:14px; background:#8a7060; margin-top:-2px; border:1px solid #705840 }
-.pine-t1 { width:12px; height:14px; clip-path:polygon(50% 0,0 100%,100% 100%); background:#3a6838 }
-.pine-t2 { width:20px; height:16px; clip-path:polygon(50% 0,0 100%,100% 100%); background:#4a7848; margin-top:-5px }
-.pine-t3 { width:28px; height:18px; clip-path:polygon(50% 0,0 100%,100% 100%); background:#5a8858; margin-top:-5px }
+.pine-t1 { width:12px; height:14px; clip-path:polygon(50% 0,0 100%,100% 100%); background:#505050 }
+.pine-t2 { width:20px; height:16px; clip-path:polygon(50% 0,0 100%,100% 100%); background:#606060; margin-top:-5px }
+.pine-t3 { width:28px; height:18px; clip-path:polygon(50% 0,0 100%,100% 100%); background:#707070; margin-top:-5px }
 .pine-tr { width:5px; height:10px; background:#8a7060; margin:0 auto }
 
 /* Benches */
@@ -278,7 +309,7 @@ code { font-family:var(--font-mono); background:var(--bg2); padding:1px 5px; fon
 /* Fountain */
 .out-fountain { position:absolute; bottom:58px }
 .fo-rim { width:48px; height:12px; background:#909090; border:2px solid #707070; border-radius:4px; display:flex; align-items:center; justify-content:center }
-.fo-water { width:36px; height:7px; background:#80a8c0; border:1px solid #6090a8; border-radius:3px; position:relative; overflow:hidden }
+.fo-water { width:36px; height:7px; background:#909090; border:1px solid #707070; border-radius:3px; position:relative; overflow:hidden }
 .fo-ripple { position:absolute; top:50%; left:50%; width:18px; height:18px; border:1px solid rgba(255,255,255,.4); border-radius:50%; transform:translate(-50%,-50%); animation:ripple 2s ease-out infinite }
 @keyframes ripple { 0%{width:4px;height:4px;opacity:1} 100%{width:30px;height:12px;opacity:0} }
 .fo-center { width:3px; height:8px; background:#808080; margin:0 auto; margin-top:-4px; border:1px solid #707070 }

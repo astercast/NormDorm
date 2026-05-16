@@ -14,9 +14,7 @@ import {
   pickActivity, activityDuration, tickNormie,
   applyOfflineCatchup, buildUpgradeEffects, checkAchievements, clamp,
 } from './state.js'
-import {
-  startWalletDiscovery, getDiscoveredWallets, connectWithProvider, fetchOwnedNormies, fetchNormiesData,
-} from './wallet.js'
+import { lookupNormies, fetchNormiesData } from './wallet.js'
 import { preloadNormieImage } from './pixel-renderer.js'
 import {
   buildDorm, placeSprite, removeSprite, animateSprites,
@@ -28,7 +26,7 @@ import {
   showChatBubble, showCoinPop, updateComboMeter,
   renderShop, renderAchievements,
   showAchievementToast, showOfflineModal,
-  showWalletPicker, renderHowItWorks,
+  renderHowItWorks,
   renderLoading, updateLoadProgress,
 } from './ui.js'
 
@@ -36,7 +34,6 @@ export class App {
   constructor(root) {
     this.root    = root
     this.address = null
-    this.provider = null
     this.isDemo  = false
     this.normies = []
     this.normieMap = new Map()
@@ -66,125 +63,174 @@ export class App {
     this._tick = null; this._save = null
     this._chat = null; this._raf  = null
     this._lastRaf = null
+    this._glyphRaf = null
   }
 
   async init() {
     initTheme()
-    startWalletDiscovery()
     this._renderConnect()
   }
 
+  // ── Homepage ──────────────────────────────────────────────────────────────
   _renderConnect() {
+    if (this._glyphRaf) { cancelAnimationFrame(this._glyphRaf); this._glyphRaf = null }
     this.root.innerHTML = `
-      <div class="header">
-        <div class="logo">NORMDORM<span class="logo-sub">pixel dorm life</span></div>
-        <div class="header-right">
-          <a href="https://normies.art" target="_blank" class="header-link">normies.art ↗</a>
-          <button class="btn btn-ghost btn-sm" id="hiw-btn">HOW IT WORKS</button>
-          <button class="theme-toggle" id="theme-toggle">🌙</button>
+      <div class="connect-page">
+        <div class="connect-brand">
+          <div class="connect-logo">NORMDORM</div>
+          <div class="connect-tagline">pixel dorm life simulator</div>
         </div>
-      </div>
 
-      <div class="connect-screen">
-        <div class="connect-hero">
-          <div class="hero-pixel-grid" id="hero-grid"></div>
+        <canvas id="glyph-canvas" class="connect-glyph" width="320" height="160"></canvas>
+
+        <div class="connect-lookup">
+          <div class="lookup-row">
+            <input
+              class="addr-input" id="addr-input" type="text"
+              placeholder="ethereum address  0x..." autocomplete="off" spellcheck="false">
+            <button class="btn btn-primary btn-load" id="btn-load">LOAD</button>
+          </div>
+          <div class="lookup-divider">— or —</div>
+          <button class="btn btn-lg btn-outline" id="btn-demo">DEMO MODE</button>
         </div>
-        <h1 class="connect-title">NORMDORM</h1>
-        <p class="connect-sub">
-          Load your <a href="https://normies.art" target="_blank">Normies NFTs</a> into a living pixel dorm.<br>
-          Watch them sleep, game, chat and vibe — idle your way to the perfect dorm.
-        </p>
-        <div class="connect-btns">
-          <button class="btn btn-primary btn-lg" id="btn-connect">⬡ CONNECT WALLET</button>
-          <button class="btn btn-lg" id="btn-demo">DEMO MODE</button>
-        </div>
-        <p class="connect-hint">
-          🛡️ Read-only — no transactions ever •
-          <button class="link-btn" id="hiw-inline">learn more</button>
-        </p>
-        <div class="connect-features">
-          <div class="feat">🏠 Live dorm rooms</div>
-          <div class="feat">💰 Idle economy</div>
-          <div class="feat">🕹️ Click combos</div>
-          <div class="feat">🛒 Upgrades</div>
-          <div class="feat">🏆 Achievements</div>
-          <div class="feat">🌙 Day/night cycle</div>
-          <div class="feat">💾 Auto-save</div>
-          <div class="feat">📴 Offline catchup</div>
-        </div>
+
+        <div class="connect-footer">no wallet · read-only · no transactions</div>
       </div>
       <div id="notif-stack" class="notif-stack"></div>`
 
-    document.getElementById('btn-connect').onclick = () => this._handleConnect()
-    document.getElementById('btn-demo').onclick    = () => this._handleDemo()
-    document.getElementById('theme-toggle').onclick = toggleTheme
-    document.getElementById('hiw-btn').onclick     = () => this._showHowItWorks()
-    document.getElementById('hiw-inline').onclick  = () => this._showHowItWorks()
-    this._animateHero()
-  }
-
-  _animateHero() {
-    const grid = document.getElementById('hero-grid'); if (!grid) return
-    for (let r = 0; r < 10; r++) for (let c = 0; c < 16; c++) {
-      const cell = document.createElement('div')
-      cell.className = 'hero-cell'
-      if (Math.random() > 0.55) cell.classList.add('on')
-      cell.style.animationDelay = `${(Math.random()*4).toFixed(2)}s`
-      grid.appendChild(cell)
+    const input = document.getElementById('addr-input')
+    document.getElementById('btn-load').onclick = () => {
+      const val = input.value.trim()
+      if (!val) { notify('Enter an Ethereum address', 'warn'); return }
+      this._handleLookup(val)
     }
+    input.onkeydown = e => { if (e.key === 'Enter') document.getElementById('btn-load').click() }
+    document.getElementById('btn-demo').onclick = () => this._handleDemo()
+
+    this._startGlyphAnimation()
   }
 
-  _showHowItWorks() {
-    renderHowItWorks(this.root)
-    window.addEventListener('hiw-back', ()=>this._renderConnect(), { once:true })
-  }
+  _startGlyphAnimation() {
+    const cvs = document.getElementById('glyph-canvas')
+    if (!cvs) return
+    const ctx = cvs.getContext('2d')
+    const W = cvs.width, H = cvs.height
+    let t = 0
 
-  async _handleConnect() {
-    await new Promise(r=>setTimeout(r,200))
-    const wallets = getDiscoveredWallets()
-    if (!wallets.length && !window.ethereum) {
-      notify('No wallet detected. Try demo mode or install a Web3 wallet.', 'warn', 6000); return
-    }
-    if (wallets.length === 1)      await this._connectWallet(wallets[0])
-    else if (wallets.length > 1)   showWalletPicker(wallets, w=>this._connectWallet(w), ()=>{})
-    else if (window.ethereum)      await this._connectWallet({ info:{uuid:'legacy',name:'Browser Wallet',icon:null}, provider:window.ethereum })
-  }
+    const draw = () => {
+      if (!document.getElementById('glyph-canvas')) return
+      ctx.clearRect(0, 0, W, H)
 
-  async _connectWallet(walletDef) {
-    try {
-      const { address, provider } = await connectWithProvider(walletDef.provider)
-      this.address = address; this.provider = provider
-      notify(`Connected: ${address.slice(0,6)}…${address.slice(-4)}`, 'info')
-      const tokenIds = await fetchOwnedNormies(address, provider)
-      if (!tokenIds.length) {
-        notify('No Normies found — loading demo.', 'warn', 5000)
-        await this._startDorm(address, DEMO_IDS, true)
-      } else {
-        await this._startDorm(address, tokenIds, false)
+      // Mini monochrome room
+      ctx.fillStyle = '#d0d0d0'
+      ctx.fillRect(0, 0, W, H * 0.38)         // wall
+      ctx.fillStyle = '#ebebeb'
+      ctx.fillRect(0, H * 0.38, W, H * 0.62)  // floor
+      ctx.fillStyle = '#aaaaaa'
+      ctx.fillRect(0, H * 0.38 - 2, W, 2)     // baseboard
+
+      // Window
+      ctx.fillStyle = '#b8b8b8'
+      ctx.fillRect(W * 0.36, H * 0.05, W * 0.28, H * 0.26)
+      ctx.strokeStyle = '#1a1a1a'; ctx.lineWidth = 2
+      ctx.strokeRect(W * 0.36, H * 0.05, W * 0.28, H * 0.26)
+      ctx.strokeStyle = '#888'; ctx.lineWidth = 1
+      ctx.beginPath()
+      ctx.moveTo(W * 0.50, H * 0.05); ctx.lineTo(W * 0.50, H * 0.31)
+      ctx.moveTo(W * 0.36, H * 0.18); ctx.lineTo(W * 0.64, H * 0.18)
+      ctx.stroke()
+
+      // Desk (left)
+      ctx.fillStyle = '#1a1a1a'
+      ctx.fillRect(W * 0.04, H * 0.38, W * 0.26, H * 0.06)
+      ctx.fillRect(W * 0.04, H * 0.44, W * 0.03, H * 0.10)
+      ctx.fillRect(W * 0.27, H * 0.44, W * 0.03, H * 0.10)
+
+      // Shelf (right)
+      ctx.fillStyle = '#1a1a1a'
+      ctx.fillRect(W * 0.70, H * 0.22, W * 0.26, H * 0.04)
+      ctx.fillRect(W * 0.70, H * 0.30, W * 0.26, H * 0.04)
+      // Books on shelf
+      const bookColors = ['#444','#666','#555','#777','#333']
+      for (let i = 0; i < 5; i++) {
+        ctx.fillStyle = bookColors[i]
+        ctx.fillRect(W * 0.71 + i * W * 0.046, H * 0.14, W * 0.038, H * 0.08)
       }
-    } catch(e) {
-      if (e.message === 'USER_REJECTED') { notify('Wallet connection cancelled.', 'warn'); return }
-      notify(`Connection failed: ${e.message}`, 'error')
+
+      // Walking normie silhouette
+      const phase = Math.floor(t * 0.06) % 4
+      const bob   = [0, -1.5, 0, 1.5][phase]
+      const nx    = W * 0.15 + (t % (W * 0.65))
+
+      ctx.fillStyle = '#0f0f0f'
+      const s = 5
+      ctx.fillRect(nx,       H * 0.40 + bob,       s * 2.2, s * 2.0)  // head
+      ctx.fillRect(nx - s * 0.5, H * 0.52 + bob,   s * 3.2, s * 2.5)  // body
+      // legs
+      if (phase === 0 || phase === 2) {
+        ctx.fillRect(nx,       H * 0.77, s * 1.2, s * 2.5)
+        ctx.fillRect(nx + s * 2, H * 0.77, s * 1.2, s * 2.5)
+      } else if (phase === 1) {
+        ctx.fillRect(nx - s * 0.4, H * 0.75, s * 1.2, s * 2.5)
+        ctx.fillRect(nx + s * 2.4, H * 0.79, s * 1.2, s * 2.5)
+      } else {
+        ctx.fillRect(nx + s * 0.4, H * 0.79, s * 1.2, s * 2.5)
+        ctx.fillRect(nx + s * 1.6, H * 0.75, s * 1.2, s * 2.5)
+      }
+
+      t++
+      this._glyphRaf = requestAnimationFrame(draw)
     }
+    draw()
   }
 
-  async _handleDemo() { await this._startDorm(null, DEMO_IDS, true) }
+  // ── Address lookup ────────────────────────────────────────────────────────
+  async _handleLookup(raw) {
+    const addr = raw.trim()
+    if (!/^0x[0-9a-fA-F]{40}$/i.test(addr)) {
+      notify('Enter a valid 0x Ethereum address', 'warn'); return
+    }
+    if (this._glyphRaf) { cancelAnimationFrame(this._glyphRaf); this._glyphRaf = null }
+    await this._startDorm(addr, false)
+  }
 
-  async _startDorm(address, tokenIds, isDemo) {
+  async _handleDemo() {
+    if (this._glyphRaf) { cancelAnimationFrame(this._glyphRaf); this._glyphRaf = null }
+    await this._startDorm(null, true)
+  }
+
+  // ── Dorm startup ──────────────────────────────────────────────────────────
+  async _startDorm(address, isDemo) {
     this.isDemo = isDemo; this.address = address
     renderLoading(this.root)
 
-    const ids = tokenIds.slice(0, 12)
+    let ids
+    if (isDemo) {
+      ids = DEMO_IDS.slice(0, 12)
+    } else {
+      try {
+        ids = await lookupNormies(address)
+      } catch(e) {
+        notify('Could not load wallet: ' + e.message, 'error')
+        this._renderConnect(); return
+      }
+      if (!ids.length) {
+        notify('No Normies found at that address — loading demo.', 'warn', 5000)
+        ids = DEMO_IDS.slice(0, 12)
+        this.isDemo = true
+      }
+    }
+
     this.rooms = buildRoomList(ids.length)
 
-    const normieData = await fetchNormiesData(ids, (l,t)=>updateLoadProgress(l,t))
-    await Promise.all(ids.map(id=>preloadNormieImage(id)))
+    const normieData = await fetchNormiesData(ids, (l, t) => updateLoadProgress(l, t))
+    await Promise.all(ids.map(id => preloadNormieImage(id)))
 
     const saved = address ? loadState(address) : null
     let offlineMinutes = 0
 
     if (saved) {
-      const { state, offlineMinutes:om } = applyOfflineCatchup(saved)
+      const { state, offlineMinutes: om } = applyOfflineCatchup(saved)
       offlineMinutes = om
       this.coins              = state.coins              || 0
       this.purchasedUpgrades  = state.purchasedUpgrades  || {}
@@ -192,27 +238,34 @@ export class App {
       this.gameStats          = { ...this.gameStats, ...state.gameStats }
       this.gameMinute         = state.gameMinute         || 0
       this.upgradeEffects     = buildUpgradeEffects(this.purchasedUpgrades)
-      this.normies = normieData.map((data,idx)=>{
-        const prev = saved.normies?.find(n=>n.id===data.id)
+      this.normies = normieData.map((data, idx) => {
+        const prev = saved.normies?.find(n => n.id === data.id)
         const pers = buildPersonality(data.traits)
-        if (prev) return { ...prev, ...data, personality:pers, needs:{...prev.needs} }
+        if (prev) return { ...prev, ...data, personality: pers, needs: { ...prev.needs } }
         return _freshNormie(data, pers, idx, this.rooms)
       })
     } else {
       this.coins = isDemo ? 500 : 0
       this.upgradeEffects = buildUpgradeEffects({})
-      this.normies = normieData.map((data,idx)=>_freshNormie(data, buildPersonality(data.traits), idx, this.rooms))
+      this.normies = normieData.map((data, idx) =>
+        _freshNormie(data, buildPersonality(data.traits), idx, this.rooms)
+      )
     }
 
-    this.normieMap = new Map(this.normies.map(n=>[n.id,n]))
+    this.normieMap = new Map(this.normies.map(n => [n.id, n]))
     await this._renderDorm()
 
-    if (offlineMinutes > 5) showOfflineModal(offlineMinutes, ()=>logEvent(`Welcome back — ${offlineMinutes}m elapsed.`))
+    if (offlineMinutes > 5) showOfflineModal(offlineMinutes, () =>
+      logEvent(`Welcome back — ${offlineMinutes}m elapsed.`)
+    )
     this._startLoops()
   }
 
+  // ── Dorm view ─────────────────────────────────────────────────────────────
   async _renderDorm() {
-    const addr = this.address ? `${this.address.slice(0,6)}…${this.address.slice(-4)}` : 'DEMO'
+    const addrLabel = this.isDemo
+      ? 'DEMO'
+      : `${this.address.slice(0, 6)}…${this.address.slice(-4)}`
 
     this.root.innerHTML = `
       <div class="header">
@@ -223,14 +276,13 @@ export class App {
             <span id="stat-coins">0</span>
           </div>
           <div class="time-pill" id="stat-time">12:00 AM</div>
-          <div class="addr-chip">${addr}</div>
+          <div class="addr-chip">${addrLabel}</div>
           <a href="https://normies.art" target="_blank" class="header-link">normies.art ↗</a>
-          <button class="btn btn-ghost btn-sm" id="hiw-btn">?</button>
           <button class="theme-toggle" id="theme-toggle">🌙</button>
           <button class="btn btn-ghost btn-sm" id="btn-leave">✕</button>
         </div>
       </div>
-      ${this.isDemo ? '<div class="demo-banner">📡 DEMO MODE — Connect a wallet with Normies to load your own</div>' : ''}
+      ${this.isDemo ? '<div class="demo-banner">DEMO MODE — enter an address on the home screen to load your own Normies</div>' : ''}
 
       <div class="tab-bar">
         <button class="tab-btn active" data-tab="dorm">🏠 DORM</button>
@@ -286,19 +338,18 @@ export class App {
 
       <div id="notif-stack" class="notif-stack"></div>`
 
-    this.root.querySelectorAll('.tab-btn').forEach(btn=>btn.onclick=()=>this._tab(btn.dataset.tab))
+    this.root.querySelectorAll('.tab-btn').forEach(btn => btn.onclick = () => this._tab(btn.dataset.tab))
     document.getElementById('theme-toggle').onclick = toggleTheme
-    document.getElementById('btn-leave').onclick    = ()=>{ this._stopAll(); this._renderConnect() }
-    document.getElementById('hiw-btn').onclick      = ()=>this._showHowItWorksInDorm()
+    document.getElementById('btn-leave').onclick    = () => { this._stopAll(); this._renderConnect() }
 
     renderRoster(this.normies)
-    renderShop(this.purchasedUpgrades, this.coins, id=>this._buyUpgrade(id))
+    renderShop(this.purchasedUpgrades, this.coins, id => this._buyUpgrade(id))
     renderAchievements(this.earnedAchievements)
     updateStats(this.normies, this.coins, this.gameMinute)
 
-    document.addEventListener('normie-click',  e=>this._onNormieClick(e.detail.id))
-    document.addEventListener('normie-action', e=>this._onNormieAction(e.detail.action, e.detail.id))
-    document.addEventListener('quick-action',  e=>this._onQuickAction(e.detail.action))
+    document.addEventListener('normie-click',  e => this._onNormieClick(e.detail.id))
+    document.addEventListener('normie-action', e => this._onNormieAction(e.detail.action, e.detail.id))
+    document.addEventListener('quick-action',  e => this._onQuickAction(e.detail.action))
 
     const buildWrap = document.getElementById('dorm-building-wrap')
     const { el: dormEl, sceneEls } = await buildDorm(this.rooms)
@@ -307,7 +358,9 @@ export class App {
     this.sceneEls = sceneEls
 
     for (const normie of this.normies) {
-      const sceneEl = this.sceneEls[normie.location] || this.sceneEls[this.rooms[0]?.id] || Object.values(this.sceneEls)[0]
+      const sceneEl = this.sceneEls[normie.location]
+        || this.sceneEls[this.rooms[0]?.id]
+        || Object.values(this.sceneEls)[0]
       placeSprite(normie, sceneEl)
     }
 
@@ -319,32 +372,26 @@ export class App {
 
   _tab(tab) {
     this.activeTab = tab
-    this.root.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab))
-    this.root.querySelectorAll('.tab-content').forEach(c=>c.classList.toggle('active',c.id===`tab-${tab}`))
-    if (tab==='shop')         renderShop(this.purchasedUpgrades, this.coins, id=>this._buyUpgrade(id))
-    if (tab==='achievements') renderAchievements(this.earnedAchievements)
-  }
-
-  _showHowItWorksInDorm() {
-    this._stopAll()
-    renderHowItWorks(this.root)
-    window.addEventListener('hiw-back', async ()=>{ await this._renderDorm(); this._startLoops() }, { once:true })
+    this.root.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab))
+    this.root.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === `tab-${tab}`))
+    if (tab === 'shop')         renderShop(this.purchasedUpgrades, this.coins, id => this._buyUpgrade(id))
+    if (tab === 'achievements') renderAchievements(this.earnedAchievements)
   }
 
   _onNormieClick(id) {
     const normie = this.normieMap.get(id); if (!normie) return
     const now = Date.now()
     if (now - this.comboLastMs < COMBO_WINDOW_MS) {
-      this.comboCount = Math.min(this.comboCount+1, this._maxCombo())
+      this.comboCount = Math.min(this.comboCount + 1, this._maxCombo())
     } else {
       this.comboCount = 1
     }
     this.comboLastMs = now
     clearTimeout(this.comboTimeout)
-    this.comboTimeout = setTimeout(()=>{ this.comboCount=0; updateComboMeter(0,this._maxCombo()) }, COMBO_WINDOW_MS+200)
+    this.comboTimeout = setTimeout(() => { this.comboCount = 0; updateComboMeter(0, this._maxCombo()) }, COMBO_WINDOW_MS + 200)
 
-    const base = COINS_CLICK_BASE * (this.upgradeEffects.clickMult||1)
-    const amt  = Math.ceil(base * this.comboCount * (1 + (normie.level||1)*0.15))
+    const base = COINS_CLICK_BASE * (this.upgradeEffects.clickMult || 1)
+    const amt  = Math.ceil(base * this.comboCount * (1 + (normie.level || 1) * 0.15))
     this.coins += amt
     this.gameStats.totalClicks++
     this.gameStats.totalCoinsEarned += amt
@@ -361,63 +408,63 @@ export class App {
     updateStats(this.normies, this.coins, this.gameMinute)
   }
 
-  _maxCombo() { return COMBO_MAX + (this.upgradeEffects.comboBonus||0) }
+  _maxCombo() { return COMBO_MAX + (this.upgradeEffects.comboBonus || 0) }
 
   _onNormieAction(action, id) {
     const normie = this.normieMap.get(id); if (!normie) return
-    const costs = { feed:COINS_FEED_COST, energy:COINS_ENERGY_DRINK_COST, study:COINS_STUDY_SESSION_COST }
+    const costs = { feed: COINS_FEED_COST, energy: COINS_ENERGY_DRINK_COST, study: COINS_STUDY_SESSION_COST }
     const cost = costs[action]
     if (this.coins < cost) { notify('Not enough coins!', 'warn'); return }
     this.coins -= cost
-    if (action === 'feed')   { normie.needs.hunger = clamp(normie.needs.hunger + 20); notify(`Fed ${normie.name} 🍜`,'info'); logEvent(EVENT_TEMPLATES.feed(normie.name)); this.gameStats.feedCount++ }
-    if (action === 'energy') { normie.needs.energy = clamp(normie.needs.energy + 35); notify(`⚡ Energy drink for ${normie.name}`,'info'); logEvent(EVENT_TEMPLATES.energyDrink(normie.name)) }
-    if (action === 'study')  { normie.needs.study  = clamp(normie.needs.study + 30); normie.needs.fun = clamp(normie.needs.fun - 5); notify(`📖 Focus session for ${normie.name}`,'info') }
+    if (action === 'feed')   { normie.needs.hunger = clamp(normie.needs.hunger + 20); notify(`Fed ${normie.name}`,'info'); logEvent(EVENT_TEMPLATES.feed(normie.name)); this.gameStats.feedCount++ }
+    if (action === 'energy') { normie.needs.energy = clamp(normie.needs.energy + 35); notify(`Energy drink for ${normie.name}`,'info'); logEvent(EVENT_TEMPLATES.energyDrink(normie.name)) }
+    if (action === 'study')  { normie.needs.study  = clamp(normie.needs.study + 30); normie.needs.fun = clamp(normie.needs.fun - 5); notify(`Focus session for ${normie.name}`,'info') }
     closeDetailPanel()
-    setTimeout(()=>showDetailPanel(normie, this.coins), 60)
+    setTimeout(() => showDetailPanel(normie, this.coins), 60)
     updateStats(this.normies, this.coins, this.gameMinute)
     this._checkAchievements()
   }
 
   _onQuickAction(action) {
     if (action === 'party') {
-      if (this.coins < COINS_PARTY_COST) { notify('Not enough coins!','warn'); return }
+      if (this.coins < COINS_PARTY_COST) { notify('Not enough coins!', 'warn'); return }
       this.coins -= COINS_PARTY_COST
       for (const n of this.normies) n.needs.social = clamp(n.needs.social + 30)
-      notify('🎉 Quad Party! All social +30','info',5000)
+      notify('Quad Party! All social +30', 'info', 5000)
       logEvent(EVENT_TEMPLATES.party())
     }
     if (action === 'studyAll') {
-      if (this.coins < COINS_STUDY_SESSION_COST) { notify('Not enough coins!','warn'); return }
+      if (this.coins < COINS_STUDY_SESSION_COST) { notify('Not enough coins!', 'warn'); return }
       this.coins -= COINS_STUDY_SESSION_COST
       for (const n of this.normies) n.needs.study = clamp(n.needs.study + 25)
-      notify('📚 Study session! All study +25','info',5000)
+      notify('Study session! All study +25', 'info', 5000)
       logEvent(EVENT_TEMPLATES.studySession())
     }
-    renderShop(this.purchasedUpgrades, this.coins, id=>this._buyUpgrade(id))
+    renderShop(this.purchasedUpgrades, this.coins, id => this._buyUpgrade(id))
     updateStats(this.normies, this.coins, this.gameMinute)
   }
 
   _buyUpgrade(upgradeId) {
-    const upg = UPGRADES.find(u=>u.id===upgradeId); if (!upg) return
-    const lvl = this.purchasedUpgrades[upgradeId]||0
-    if (lvl >= upg.maxLevel) { notify('Already maxed!','warn'); return }
+    const upg = UPGRADES.find(u => u.id === upgradeId); if (!upg) return
+    const lvl = this.purchasedUpgrades[upgradeId] || 0
+    if (lvl >= upg.maxLevel) { notify('Already maxed!', 'warn'); return }
     const cost = Math.floor(upg.cost * Math.pow(1.65, lvl))
-    if (this.coins < cost) { notify('Not enough coins!','warn'); return }
+    if (this.coins < cost) { notify('Not enough coins!', 'warn'); return }
     this.coins -= cost
-    this.purchasedUpgrades[upgradeId] = lvl+1
+    this.purchasedUpgrades[upgradeId] = lvl + 1
     this.upgradeEffects = buildUpgradeEffects(this.purchasedUpgrades)
     this.gameStats.totalUpgradesBought++
-    notify(`${upg.icon} ${upg.name} upgraded to Lv.${lvl+1}`,'info')
-    logEvent(EVENT_TEMPLATES.upgrade(upg.name, lvl+1))
-    renderShop(this.purchasedUpgrades, this.coins, id=>this._buyUpgrade(id))
+    notify(`${upg.icon} ${upg.name} upgraded to Lv.${lvl + 1}`, 'info')
+    logEvent(EVENT_TEMPLATES.upgrade(upg.name, lvl + 1))
+    renderShop(this.purchasedUpgrades, this.coins, id => this._buyUpgrade(id))
     this._checkAchievements()
     updateStats(this.normies, this.coins, this.gameMinute)
   }
 
   _startLoops() {
-    this._tick = setInterval(()=>this._gameTick(), TICK_MS)
-    this._save = this.address ? setInterval(()=>this._doSave(), 20000) : null
-    this._chat = setInterval(()=>this._chatTick(), 4200)
+    this._tick = setInterval(() => this._gameTick(), TICK_MS)
+    this._save = this.address ? setInterval(() => this._doSave(), 20000) : null
+    this._chat = setInterval(() => this._chatTick(), 4200)
     this._startRAF()
   }
 
@@ -425,8 +472,8 @@ export class App {
     this.tickCount++
     this.gameMinute += GAME_MINS_PER_TICK
 
-    const mult = this.upgradeEffects.passiveIncomeMult||1
-    const flat = this.upgradeEffects.passiveIncomeFlat||0
+    const mult    = this.upgradeEffects.passiveIncomeMult || 1
+    const flat    = this.upgradeEffects.passiveIncomeFlat || 0
     const passive = this.normies.length * COINS_PER_TICK_BASE * mult + flat
     this.coins += passive
     this.gameStats.totalCoinsEarned += passive
@@ -437,7 +484,7 @@ export class App {
       if (n.activityTicksLeft <= 0) this._switchActivity(n)
 
       for (const k of satisfiedEvents) {
-        const satAmt = Math.ceil(COINS_NEED_SATISFIED * (this.upgradeEffects.satisfiedMult||1))
+        const satAmt = Math.ceil(COINS_NEED_SATISFIED * (this.upgradeEffects.satisfiedMult || 1))
         this.coins += satAmt
         this.gameStats.totalCoinsEarned += satAmt
         this.gameStats.satisfiedCount++
@@ -445,9 +492,9 @@ export class App {
       }
       for (const k of ALL_NEEDS) {
         if (n.needs[k] < 8 && !n._warned?.[k]) {
-          n._warned = { ...(n._warned||{}), [k]:true }
+          n._warned = { ...(n._warned || {}), [k]: true }
           logEvent(EVENT_TEMPLATES.critical(n.name, k))
-          notify(`⚠️ ${n.name} — ${k} is critical!`, 'warn')
+          notify(`${n.name} — ${k} is critical!`, 'warn')
           this.coins = Math.max(0, this.coins - COINS_CRITICAL_PENALTY)
         }
         if (n.needs[k] > 25 && n._warned?.[k]) n._warned[k] = false
@@ -481,7 +528,7 @@ export class App {
 
   _startRAF() {
     const loop = ts => {
-      const dt = this._lastRaf ? Math.min((ts-this._lastRaf)/1000, 0.1) : 0.016
+      const dt = this._lastRaf ? Math.min((ts - this._lastRaf) / 1000, 0.1) : 0.016
       this._lastRaf = ts
       animateSprites(this.normieMap, this.nightAlpha, dt)
       this._raf = requestAnimationFrame(loop)
@@ -496,21 +543,21 @@ export class App {
       ['chatting','outside','gaming','eating','walking','exercising','cooking','sketching'].includes(n.activity)
     )
     if (!eligible.length) return
-    const n = eligible[Math.floor(Math.random()*eligible.length)]
-    const isCrit = Object.values(n.needs).some(v=>v<12)
-    const pool   = isCrit ? CHAT_LINES.critical : (CHAT_LINES[n.activity]||CHAT_LINES.chatting)
-    showChatBubble(n.id, pool[Math.floor(Math.random()*pool.length)])
-    n.chatCooldown = 20 + Math.floor(Math.random()*15)
+    const n     = eligible[Math.floor(Math.random() * eligible.length)]
+    const isCrit = Object.values(n.needs).some(v => v < 12)
+    const pool   = isCrit ? CHAT_LINES.critical : (CHAT_LINES[n.activity] || CHAT_LINES.chatting)
+    showChatBubble(n.id, pool[Math.floor(Math.random() * pool.length)])
+    n.chatCooldown = 20 + Math.floor(Math.random() * 15)
   }
 
   _checkAchievements() {
-    if (this.normies.every(n=>ALL_NEEDS.every(k=>n.needs[k]>80))) this.gameStats.allHappyOnce = true
-    const acts = new Set(this.normies.map(n=>n.activity))
+    if (this.normies.every(n => ALL_NEEDS.every(k => n.needs[k] > 80))) this.gameStats.allHappyOnce = true
+    const acts = new Set(this.normies.map(n => n.activity))
     if (acts.size >= 6) this.gameStats.allActivitiesOnce = true
     const newly = checkAchievements(this.gameStats, this.earnedAchievements)
     for (const id of newly) {
       this.earnedAchievements.push(id)
-      const ach = ACHIEVEMENTS.find(a=>a.id===id)
+      const ach = ACHIEVEMENTS.find(a => a.id === id)
       if (ach) { showAchievementToast(ach); logEvent(EVENT_TEMPLATES.achieve(ach.name)) }
     }
   }
@@ -518,30 +565,35 @@ export class App {
   _doSave() {
     if (!this.address) return
     saveState(this.address, {
-      normies: this.normies.map(n=>({ id:n.id, needs:n.needs, activity:n.activity, activityTicksLeft:n.activityTicksLeft, location:n.location, chatCooldown:n.chatCooldown||0, _warned:n._warned||{} })),
-      coins:this.coins, purchasedUpgrades:this.purchasedUpgrades,
-      earnedAchievements:this.earnedAchievements,
-      gameStats:this.gameStats, gameMinute:this.gameMinute,
+      normies: this.normies.map(n => ({
+        id: n.id, needs: n.needs, activity: n.activity,
+        activityTicksLeft: n.activityTicksLeft, location: n.location,
+        chatCooldown: n.chatCooldown || 0, _warned: n._warned || {},
+      })),
+      coins: this.coins, purchasedUpgrades: this.purchasedUpgrades,
+      earnedAchievements: this.earnedAchievements,
+      gameStats: this.gameStats, gameMinute: this.gameMinute,
     })
   }
 
   _stopAll() {
     clearInterval(this._tick); clearInterval(this._save); clearInterval(this._chat)
     cancelAnimationFrame(this._raf)
+    if (this._glyphRaf) { cancelAnimationFrame(this._glyphRaf); this._glyphRaf = null }
     this._doSave()
-    document.removeEventListener('normie-click',  ()=>{})
-    document.removeEventListener('normie-action', ()=>{})
-    document.removeEventListener('quick-action',  ()=>{})
+    document.removeEventListener('normie-click',  () => {})
+    document.removeEventListener('normie-action', () => {})
+    document.removeEventListener('quick-action',  () => {})
   }
 }
 
 function _freshNormie(data, personality, idx, rooms) {
   const indoorRooms = rooms.filter(r => r.typeId !== 'outdoor')
-  const defRoom = indoorRooms[idx % Math.max(indoorRooms.length, 1)]?.id || 'outdoor'
+  const defRoom     = indoorRooms[idx % Math.max(indoorRooms.length, 1)]?.id || 'outdoor'
   const { activity, location } = pickActivity(freshNeeds(), personality, defRoom, rooms)
   return {
-    ...data, personality, needs:freshNeeds(), activity,
-    activityTicksLeft:activityDuration(activity),
-    location: location || defRoom, chatCooldown:0, _warned:{},
+    ...data, personality, needs: freshNeeds(), activity,
+    activityTicksLeft: activityDuration(activity),
+    location: location || defRoom, chatCooldown: 0, _warned: {},
   }
 }
