@@ -100,13 +100,30 @@ export class App {
       </div>
       <div id="notif-stack" class="notif-stack"></div>`
 
-    const input = document.getElementById('addr-input')
-    document.getElementById('btn-load').onclick = () => {
+    const input  = document.getElementById('addr-input')
+    const btnLoad = document.getElementById('btn-load')
+
+    const _submit = () => {
       const val = input.value.trim()
-      if (!val) { notify('Enter an Ethereum address', 'warn'); return }
+      if (!val) {
+        input.style.borderColor = 'var(--accent)'
+        notify('Enter an Ethereum address (0x…)', 'warn')
+        input.focus(); return
+      }
+      if (!/^0x[0-9a-fA-F]{40}$/i.test(val)) {
+        input.style.borderColor = '#c05050'
+        notify('Address must start with 0x and be 42 characters', 'warn')
+        input.focus(); return
+      }
+      input.style.borderColor = ''
+      btnLoad.disabled = true
+      btnLoad.textContent = 'LOADING…'
       this._handleLookup(val)
     }
-    input.onkeydown = e => { if (e.key === 'Enter') document.getElementById('btn-load').click() }
+
+    btnLoad.onclick = _submit
+    input.onkeydown = e => { if (e.key === 'Enter') _submit() }
+    input.oninput   = () => { input.style.borderColor = '' }
     document.getElementById('btn-demo').onclick = () => this._handleDemo()
 
     this._startGlyphAnimation()
@@ -189,9 +206,6 @@ export class App {
   // ── Address lookup ────────────────────────────────────────────────────────
   async _handleLookup(raw) {
     const addr = raw.trim()
-    if (!/^0x[0-9a-fA-F]{40}$/i.test(addr)) {
-      notify('Enter a valid 0x Ethereum address', 'warn'); return
-    }
     if (this._glyphRaf) { cancelAnimationFrame(this._glyphRaf); this._glyphRaf = null }
     await this._startDorm(addr, false)
   }
@@ -213,7 +227,7 @@ export class App {
       try {
         ids = await lookupNormies(address)
       } catch(e) {
-        notify('Could not load wallet: ' + e.message, 'error')
+        notify('Could not load wallet — ' + (e.message || 'network error') + '. Try demo mode.', 'error', 7000)
         this._renderConnect(); return
       }
       if (!ids.length) {
