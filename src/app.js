@@ -294,8 +294,6 @@ export class App {
     renderRoster(this.normies)
     renderShop(this.purchasedUpgrades, this.coins, id=>this._buyUpgrade(id))
     renderAchievements(this.earnedAchievements)
-    updateOccupancy(this.normies)
-    this.nightAlpha = updateDayNight(this.gameMinute)
     updateStats(this.normies, this.coins, this.gameMinute)
 
     document.addEventListener('normie-click',  e=>this._onNormieClick(e.detail.id))
@@ -312,6 +310,9 @@ export class App {
       const sceneEl = this.sceneEls[normie.location] || this.sceneEls[this.rooms[0]?.id] || Object.values(this.sceneEls)[0]
       placeSprite(normie, sceneEl)
     }
+
+    updateOccupancy(this.normies)
+    this.nightAlpha = updateDayNight(this.gameMinute)
 
     logEvent('Welcome to NormDorm! Click your normies to earn coins.')
   }
