@@ -369,6 +369,7 @@ export class App {
               <div id="dorm-building-wrap"></div>
             </div>
             <div class="dorm-sidebar" id="dorm-sidebar">
+              <button class="sb-close-btn" id="sb-close-btn" aria-label="Close panel">✕</button>
               <div class="sb-section sb-happiness">
                 <div class="sb-title">HAPPINESS <span id="happiness-pct" class="happiness-pct">--%</span></div>
                 <div class="happiness-bar-wrap">
@@ -418,28 +419,50 @@ export class App {
         </div>
       </div>
 
-      <div id="notif-stack" class="notif-stack"></div>`
+      <div id="notif-stack" class="notif-stack"></div>
+      <div id="sidebar-backdrop" class="sidebar-backdrop"></div>`
 
+    // ── Tab switching ─────────────────────────────────────────────────────────
     this.root.querySelectorAll('.tab-btn').forEach(btn => btn.onclick = () => this._tab(btn.dataset.tab))
     document.getElementById('theme-toggle').onclick = toggleTheme
     document.getElementById('btn-leave').onclick    = () => { this._stopAll(); this._renderConnect() }
     document.getElementById('logo-home').onclick    = () => { this._stopAll(); this._renderConnect() }
 
-    // Mobile sidebar toggle
+    // ── Mobile sidebar open/close ─────────────────────────────────────────────
+    const _openSidebar = () => {
+      document.getElementById('dorm-sidebar')?.classList.add('sidebar-open')
+      document.getElementById('sidebar-backdrop')?.classList.add('active')
+    }
+    const _closeSidebar = () => {
+      document.getElementById('dorm-sidebar')?.classList.remove('sidebar-open')
+      document.getElementById('sidebar-backdrop')?.classList.remove('active')
+    }
     document.getElementById('msb-sidebar-toggle')?.addEventListener('click', () => {
-      const sb = document.getElementById('dorm-sidebar')
-      if (sb) sb.classList.toggle('sidebar-open')
+      const isOpen = document.getElementById('dorm-sidebar')?.classList.contains('sidebar-open')
+      isOpen ? _closeSidebar() : _openSidebar()
     })
+    document.getElementById('sb-close-btn')?.addEventListener('click', _closeSidebar)
+    document.getElementById('sidebar-backdrop')?.addEventListener('click', _closeSidebar)
+
+    // ── Global keyboard shortcuts ─────────────────────────────────────────────
+    this._keyHandler = e => {
+      if (e.key === 'Escape') _closeSidebar()
+    }
+    document.addEventListener('keydown', this._keyHandler)
+
+    // ── Game event listeners (stored for proper cleanup in _stopAll) ──────────
+    this._evNormieClick  = e => this._onNormieClick(e.detail.id)
+    this._evNormieAction = e => this._onNormieAction(e.detail.action, e.detail.id)
+    this._evQuickAction  = e => this._onQuickAction(e.detail.action)
+    document.addEventListener('normie-click',  this._evNormieClick)
+    document.addEventListener('normie-action', this._evNormieAction)
+    document.addEventListener('quick-action',  this._evQuickAction)
 
     renderRoster(this.normies)
     renderShop(this.purchasedUpgrades, this.coins, id => this._buyUpgrade(id))
     renderAchievements(this.earnedAchievements)
     updateStats(this.normies, this.coins, this.gameMinute, calcDormHappiness(this.normies), 0)
     renderLeaderboard(this.address, this.isDemo)
-
-    document.addEventListener('normie-click',  e => this._onNormieClick(e.detail.id))
-    document.addEventListener('normie-action', e => this._onNormieAction(e.detail.action, e.detail.id))
-    document.addEventListener('quick-action',  e => this._onQuickAction(e.detail.action))
 
     const buildWrap = document.getElementById('dorm-building-wrap')
     const { el: dormEl, sceneEls } = await buildDorm(this.rooms)
@@ -904,9 +927,12 @@ export class App {
     cancelAnimationFrame(this._raf)
     if (this._glyphRaf) { cancelAnimationFrame(this._glyphRaf); this._glyphRaf = null }
     this._doSave()
-    document.removeEventListener('normie-click',  () => {})
-    document.removeEventListener('normie-action', () => {})
-    document.removeEventListener('quick-action',  () => {})
+    // Remove stored listeners by reference so they don't leak across sessions
+    if (this._evNormieClick)  document.removeEventListener('normie-click',  this._evNormieClick)
+    if (this._evNormieAction) document.removeEventListener('normie-action', this._evNormieAction)
+    if (this._evQuickAction)  document.removeEventListener('quick-action',  this._evQuickAction)
+    if (this._keyHandler)     document.removeEventListener('keydown',       this._keyHandler)
+    this._evNormieClick = this._evNormieAction = this._evQuickAction = this._keyHandler = null
   }
 }
 

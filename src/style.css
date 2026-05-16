@@ -983,7 +983,11 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
   background: var(--panel); border-left: 1px solid var(--border);
   display: flex; flex-direction: column;
   overflow-y: auto; overflow-x: hidden;
+  position: relative; /* needed so sb-close-btn absolute is scoped to sidebar */
 }
+/* Backdrop and close button are invisible on desktop */
+.sidebar-backdrop { display: none; }
+.sb-close-btn { display: none; }
 .sb-section { border-bottom: 1px solid var(--border); padding: 12px 14px; flex-shrink: 0 }
 .sb-log { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 12px 14px }
 .sb-title {
@@ -1495,15 +1499,41 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
   }
   .dorm-sidebar.sidebar-open { right: 0 }
 
-  /* Backdrop overlay when drawer is open */
-  .dorm-sidebar.sidebar-open::before {
-    content: '';
+  /* Unhide close button and backdrop on mobile */
+  .sb-close-btn { display: flex; }
+  .sidebar-backdrop { display: none; }  /* still hidden until .active */
+
+  /* Real backdrop div — can receive click events to close the drawer */
+  .sidebar-backdrop {
+    display: none;
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,.35);
-    z-index: -1;
+    background: rgba(0,0,0,.40);
     backdrop-filter: blur(2px);
+    z-index: 399;
   }
+  .sidebar-backdrop.active { display: block; }
+
+  /* Close button inside the drawer (visible only on mobile) */
+  .sb-close-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text2);
+    font-size: 14px;
+    cursor: pointer;
+    z-index: 10;
+    transition: background .15s, color .15s;
+  }
+  .sb-close-btn:hover { background: var(--border); color: var(--text); }
 
   .detail-panel { right: 8px; bottom: 8px; width: calc(100vw - 16px); max-width: 300px }
   .safety-grid { grid-template-columns: 1fr }
