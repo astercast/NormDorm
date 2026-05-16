@@ -834,7 +834,7 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
    ══════════════════════════════════════════════════════════════════ */
 .normie-sprite {
   image-rendering: pixelated; image-rendering: crisp-edges;
-  cursor: pointer;
+  cursor: grab;
   background: transparent !important;
   border: none; outline: none; box-shadow: none;
   /* Faint white halo outline + depth shadow — works on any background */
@@ -853,6 +853,16 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
     brightness(1.05);
   z-index: 30 !important;
   transform: scale(1.1) translateY(-3px);
+}
+.normie-sprite:active { cursor: grabbing; }
+
+/* ── Drag-and-drop drop zone highlight ──────────────────────────────────── */
+.room-wrap.room-drop-active .room-scene,
+.outdoor-wrap.room-drop-active .outdoor-scene {
+  outline: 2px solid var(--accent, #6488ff);
+  outline-offset: -2px;
+  background: rgba(100,136,255,0.06);
+  transition: outline .08s, background .08s;
 }
 .normie-sprite.is-agentic {
   filter:

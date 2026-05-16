@@ -454,9 +454,11 @@ export class App {
     this._evNormieClick  = e => this._onNormieClick(e.detail.id)
     this._evNormieAction = e => this._onNormieAction(e.detail.action, e.detail.id)
     this._evQuickAction  = e => this._onQuickAction(e.detail.action)
+    this._evNormieDrop   = e => this._onNormieDrop(e.detail.id, e.detail.roomId)
     document.addEventListener('normie-click',  this._evNormieClick)
     document.addEventListener('normie-action', this._evNormieAction)
     document.addEventListener('quick-action',  this._evQuickAction)
+    document.addEventListener('normie-drop',   this._evNormieDrop)
 
     renderRoster(this.normies)
     renderShop(this.purchasedUpgrades, this.coins, id => this._buyUpgrade(id))
@@ -550,6 +552,32 @@ export class App {
     setTimeout(() => showDetailPanel(normie, this.coins), 60)
     updateStats(this.normies, this.coins, this.gameMinute, calcDormHappiness(this.normies), this._incomePerMin())
     this._checkAchievements()
+  }
+
+  _onNormieDrop(normieId, targetRoomId) {
+    const normie = this.normies.find(n => n.id === normieId)
+    if (!normie || normie.location === targetRoomId) return
+    const targetSceneEl = this.sceneEls?.[targetRoomId]
+    if (!targetSceneEl) return
+    // Capacity check for indoor rooms
+    if (targetRoomId !== 'outdoor') {
+      const targetRoom = this.rooms.find(r => r.id === targetRoomId)
+      const occupants  = this.normies.filter(n => n.location === targetRoomId).length
+      if (targetRoom && occupants >= targetRoom.maxOcc) {
+        notify(`${targetRoom.typeName || 'Room'} is full!`, 'warn', 2500)
+        return
+      }
+    }
+    normie.location = targetRoomId
+    const { activity } = pickActivity(normie.needs, normie.personality, targetRoomId, this.rooms)
+    normie.activity          = activity
+    normie.activityTicksLeft = activityDuration(activity)
+    setSpriteScene(normie, targetSceneEl)
+    updateOccupancy(this.normies)
+    const roomName = targetRoomId === 'outdoor'
+      ? 'the quad'
+      : (this.rooms.find(r => r.id === targetRoomId)?.typeName || targetRoomId)
+    logEvent(`Normie #${normie.id} moved to ${roomName}`)
   }
 
   _onQuickAction(action) {
@@ -931,8 +959,9 @@ export class App {
     if (this._evNormieClick)  document.removeEventListener('normie-click',  this._evNormieClick)
     if (this._evNormieAction) document.removeEventListener('normie-action', this._evNormieAction)
     if (this._evQuickAction)  document.removeEventListener('quick-action',  this._evQuickAction)
+    if (this._evNormieDrop)   document.removeEventListener('normie-drop',   this._evNormieDrop)
     if (this._keyHandler)     document.removeEventListener('keydown',       this._keyHandler)
-    this._evNormieClick = this._evNormieAction = this._evQuickAction = this._keyHandler = null
+    this._evNormieClick = this._evNormieAction = this._evQuickAction = this._evNormieDrop = this._keyHandler = null
   }
 }
 

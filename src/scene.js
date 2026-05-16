@@ -1096,6 +1096,79 @@ function _mkOutLamp(xPct) {
   return l
 }
 
+// ── Drag & Drop ───────────────────────────────────────────────────────────────
+// Uses Pointer Events so it works identically on mouse and touch.
+let _drag            = null   // active drag state
+let _lastDragId      = null   // normie id of the most recent completed drag
+let _dragBlockTimer  = null   //  → used to swallow the phantom click after a drag
+
+function _startDrag(normie, srcCvs, e) {
+  if (_drag) return
+  const ghost = document.createElement('canvas')
+  ghost.width  = srcCvs.width
+  ghost.height = srcCvs.height
+  ghost.style.cssText =
+    'position:fixed;pointer-events:none;image-rendering:pixelated;z-index:9999;' +
+    'opacity:0.88;transform:translate(-50%,-90%) scale(1.12);' +
+    'filter:drop-shadow(0 8px 20px rgba(0,0,0,0.5));transition:none'
+  ghost.getContext('2d').drawImage(srcCvs, 0, 0)
+  document.body.appendChild(ghost)
+  ghost.style.left = e.clientX + 'px'
+  ghost.style.top  = e.clientY + 'px'
+  srcCvs.style.opacity = '0.22'
+  document.body.style.userSelect = 'none'
+  document.body.style.webkitUserSelect = 'none'
+  _drag = { normieId: normie.id, srcCvs, ghost, startX: e.clientX, startY: e.clientY, moved: false }
+  srcCvs.setPointerCapture(e.pointerId)
+}
+
+function _updateDrag(e) {
+  if (!_drag) return
+  _drag.ghost.style.left = e.clientX + 'px'
+  _drag.ghost.style.top  = e.clientY + 'px'
+  if (!_drag.moved) {
+    if (Math.hypot(e.clientX - _drag.startX, e.clientY - _drag.startY) > 6) _drag.moved = true
+  }
+  if (!_drag.moved) return
+  // Briefly hide ghost so elementFromPoint sees what's underneath
+  _drag.ghost.style.visibility = 'hidden'
+  const over = _roomIdFromEl(document.elementFromPoint(e.clientX, e.clientY))
+  _drag.ghost.style.visibility = ''
+  document.querySelectorAll('.room-drop-active').forEach(el => el.classList.remove('room-drop-active'))
+  if (over !== null) document.getElementById('roomwrap-' + over)?.classList.add('room-drop-active')
+}
+
+function _endDrag(e) {
+  if (!_drag) return
+  const { normieId, srcCvs, ghost, moved } = _drag
+  _drag = null
+  ghost.remove()
+  srcCvs.style.opacity = ''
+  document.body.style.userSelect = ''
+  document.body.style.webkitUserSelect = ''
+  document.querySelectorAll('.room-drop-active').forEach(el => el.classList.remove('room-drop-active'))
+  if (!moved) return  // was a tap — let the click event fire normally
+  // Hide ghost, sample element underneath, then dispatch drop
+  ghost.style.visibility = 'hidden'
+  const roomId = _roomIdFromEl(document.elementFromPoint(e.clientX, e.clientY))
+  ghost.style.visibility = ''
+  if (roomId !== null) {
+    _lastDragId = normieId
+    clearTimeout(_dragBlockTimer)
+    _dragBlockTimer = setTimeout(() => { _lastDragId = null }, 80)
+    document.dispatchEvent(new CustomEvent('normie-drop', { detail: { id: normieId, roomId } }))
+  }
+}
+
+function _roomIdFromEl(el) {
+  let node = el
+  while (node && node !== document.body) {
+    if (node.id?.startsWith('roomwrap-')) return node.id.slice(9)
+    node = node.parentElement
+  }
+  return null
+}
+
 // ── Sprite system ──────────────────────────────────────────────────────────
 export function placeSprite(normie, sceneEl) {
   removeSprite(normie.id)
@@ -1153,7 +1226,15 @@ export function placeSprite(normie, sceneEl) {
 
   _redrawSprite(normie, ss)
 
+  cvs.addEventListener('pointerdown', e => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return
+    _startDrag(normie, cvs, e)
+  })
+  cvs.addEventListener('pointermove',   e => { if (_drag?.normieId === normie.id) _updateDrag(e) })
+  cvs.addEventListener('pointerup',     e => { if (_drag?.normieId === normie.id) _endDrag(e) })
+  cvs.addEventListener('pointercancel', e => { if (_drag?.normieId === normie.id) _endDrag(e) })
   cvs.addEventListener('click', e => {
+    if (_lastDragId === normie.id) return  // swallow phantom click after drag
     e.stopPropagation()
     document.dispatchEvent(new CustomEvent('normie-click', { detail: { id: normie.id } }))
   })
