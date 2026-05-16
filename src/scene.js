@@ -80,53 +80,110 @@ const MONO = {
 // ── Drawing primitives ─────────────────────────────────────────────────────
 
 function _base(ctx, C) {
+  // Wall
   ctx.fillStyle = C.wall
   ctx.fillRect(0, 0, ROOM_W, WALL_H)
   const wGrad = ctx.createLinearGradient(0, 0, 0, WALL_H)
-  wGrad.addColorStop(0, 'rgba(255,255,255,0.06)')
-  wGrad.addColorStop(1, 'rgba(0,0,0,0.10)')
+  wGrad.addColorStop(0, 'rgba(255,255,255,0.09)')
+  wGrad.addColorStop(1, 'rgba(0,0,0,0.14)')
   ctx.fillStyle = wGrad; ctx.fillRect(0, 0, ROOM_W, WALL_H)
 
+  // Floor
   ctx.fillStyle = C.floor
   ctx.fillRect(0, WALL_H, ROOM_W, ROOM_H - WALL_H)
   const fGrad = ctx.createLinearGradient(0, WALL_H, 0, ROOM_H)
-  fGrad.addColorStop(0, 'rgba(255,255,255,0.07)')
-  fGrad.addColorStop(1, 'rgba(0,0,0,0.10)')
+  fGrad.addColorStop(0, 'rgba(0,0,0,0.10)')
+  fGrad.addColorStop(0.5, 'rgba(0,0,0,0.03)')
+  fGrad.addColorStop(1, 'rgba(0,0,0,0.06)')
   ctx.fillStyle = fGrad; ctx.fillRect(0, WALL_H, ROOM_W, ROOM_H - WALL_H)
 
-  // 1-point perspective grid
-  const FH = ROOM_H - WALL_H
-  ctx.strokeStyle = C.sg; ctx.globalAlpha = 0.16; ctx.lineWidth = 0.5
-  const hStops = [0.10, 0.21, 0.34, 0.48, 0.62, 0.76, 0.88, 1.00]
-  for (const t of hStops) {
-    const y = WALL_H + t * FH
-    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(ROOM_W, y); ctx.stroke()
-  }
-  for (let i = 0; i <= 10; i++) {
-    const xB = (i / 10) * ROOM_W
-    ctx.beginPath(); ctx.moveTo(VP_X, VP_Y); ctx.lineTo(xB, ROOM_H); ctx.stroke()
-  }
-  ctx.globalAlpha = 1
+  // Edge ambient occlusion (left/right walls)
+  const lSh = ctx.createLinearGradient(0, 0, 28, 0)
+  lSh.addColorStop(0, 'rgba(0,0,0,0.28)'); lSh.addColorStop(1, 'rgba(0,0,0,0)')
+  ctx.fillStyle = lSh; ctx.fillRect(0, 0, 28, ROOM_H)
+  const rSh = ctx.createLinearGradient(ROOM_W - 28, 0, ROOM_W, 0)
+  rSh.addColorStop(0, 'rgba(0,0,0,0)'); rSh.addColorStop(1, 'rgba(0,0,0,0.22)')
+  ctx.fillStyle = rSh; ctx.fillRect(ROOM_W - 28, 0, 28, ROOM_H)
 
-  // Left / right wall edge shadows
-  const lSh = ctx.createLinearGradient(0, 0, 26, 0)
-  lSh.addColorStop(0, 'rgba(0,0,0,0.24)'); lSh.addColorStop(1, 'rgba(0,0,0,0)')
-  ctx.fillStyle = lSh; ctx.fillRect(0, 0, 26, ROOM_H)
-  const rSh = ctx.createLinearGradient(ROOM_W - 26, 0, ROOM_W, 0)
-  rSh.addColorStop(0, 'rgba(0,0,0,0)'); rSh.addColorStop(1, 'rgba(0,0,0,0.18)')
-  ctx.fillStyle = rSh; ctx.fillRect(ROOM_W - 26, 0, 26, ROOM_H)
+  // Ceiling → floor shadow
+  const cSh = ctx.createLinearGradient(0, WALL_H, 0, WALL_H + 24)
+  cSh.addColorStop(0, 'rgba(0,0,0,0.22)'); cSh.addColorStop(1, 'rgba(0,0,0,0)')
+  ctx.fillStyle = cSh; ctx.fillRect(0, WALL_H, ROOM_W, 24)
 
-  // Ceiling shadow
-  const cSh = ctx.createLinearGradient(0, WALL_H, 0, WALL_H + 20)
-  cSh.addColorStop(0, 'rgba(0,0,0,0.16)'); cSh.addColorStop(1, 'rgba(0,0,0,0)')
-  ctx.fillStyle = cSh; ctx.fillRect(0, WALL_H, ROOM_W, 20)
+  // Corner darkening (where wall meets floor)
+  ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fillRect(0, WALL_H - 4, ROOM_W, 8)
 
-  // Baseboard + ceiling trim
-  ctx.fillStyle = C.lt; ctx.fillRect(0, WALL_H - 6, ROOM_W, 4)
+  // Skirting board + ceiling trim
+  ctx.fillStyle = C.lt; ctx.fillRect(0, WALL_H - 7, ROOM_W, 5)
   ctx.fillStyle = C.ink
   ctx.fillRect(0, WALL_H - 2, ROOM_W, 2)
   ctx.fillRect(0, 0, ROOM_W, 2)
   ctx.fillRect(0, ROOM_H - 2, ROOM_W, 2)
+}
+
+// Floor textures ────────────────────────────────────────────────────────────
+
+function _floorPlanks(ctx, C, wide = false) {
+  const ph = wide ? 18 : 13
+  ctx.save(); ctx.globalAlpha = 1
+  for (let y = WALL_H; y < ROOM_H; y += ph) {
+    // Alternate-shade planks
+    ctx.fillStyle = (Math.floor((y - WALL_H) / ph) % 2 === 0) ? C.fLo : C.floor
+    ctx.fillRect(0, y, ROOM_W, ph)
+    // Plank gap line
+    ctx.strokeStyle = C.md; ctx.globalAlpha = 0.10; ctx.lineWidth = 1
+    ctx.beginPath(); ctx.moveTo(0, y + ph); ctx.lineTo(ROOM_W, y + ph); ctx.stroke()
+    ctx.globalAlpha = 1
+    // Short cross-cuts every few planks
+    const r = Math.floor((y - WALL_H) / ph)
+    const jx = (r % 3 === 0 ? 80 : r % 3 === 1 ? 200 : 40) + ((r * 53) % 60)
+    ctx.strokeStyle = C.md; ctx.globalAlpha = 0.07; ctx.lineWidth = 0.5
+    ctx.beginPath(); ctx.moveTo(jx, y); ctx.lineTo(jx, y + ph); ctx.stroke()
+    ctx.globalAlpha = 1
+  }
+  ctx.restore()
+}
+
+function _floorTiles(ctx, C, sz = 20) {
+  ctx.save()
+  for (let y = WALL_H; y < ROOM_H; y += sz) {
+    for (let x = 0; x < ROOM_W; x += sz) {
+      const dark = ((Math.floor(x / sz) + Math.floor((y - WALL_H) / sz)) % 2 === 0)
+      if (dark) {
+        ctx.fillStyle = C.fLo; ctx.globalAlpha = 0.18
+        ctx.fillRect(x, y, sz, sz)
+        ctx.globalAlpha = 1
+      }
+    }
+  }
+  ctx.strokeStyle = C.md; ctx.globalAlpha = 0.09; ctx.lineWidth = 0.5
+  for (let y = WALL_H; y < ROOM_H; y += sz) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(ROOM_W, y); ctx.stroke()
+  }
+  for (let x = 0; x < ROOM_W; x += sz) {
+    ctx.beginPath(); ctx.moveTo(x, WALL_H); ctx.lineTo(x, ROOM_H); ctx.stroke()
+  }
+  ctx.globalAlpha = 1; ctx.restore()
+}
+
+function _floorCarpet(ctx, C) {
+  ctx.save()
+  const fs = 10
+  ctx.globalAlpha = 0.07
+  for (let y = WALL_H; y < ROOM_H; y += fs)
+    for (let x = 0; x < ROOM_W; x += fs)
+      if ((Math.floor(x / fs) + Math.floor((y - WALL_H) / fs)) % 2 === 0) {
+        ctx.fillStyle = C.sg; ctx.fillRect(x + 1, y + 1, fs - 2, fs - 2)
+      }
+  ctx.globalAlpha = 1; ctx.restore()
+}
+
+// Ceiling lamp light pool ────────────────────────────────────────────────────
+function _lampPool(ctx, cx, C) {
+  const grad = ctx.createRadialGradient(cx, WALL_H + 4, 0, cx, WALL_H + 30, 90)
+  grad.addColorStop(0, 'rgba(255,255,255,0.06)')
+  grad.addColorStop(1, 'rgba(0,0,0,0)')
+  ctx.fillStyle = grad; ctx.fillRect(cx - 90, WALL_H, 180, 90)
 }
 
 // 3D isometric-lite box: x,y = left/bottom of front face
@@ -228,6 +285,8 @@ function _poster(ctx, x, y, w, h, C) {
 
 function _drawStudy(ctx, C) {
   _base(ctx, C)
+  _floorPlanks(ctx, C)
+  _lampPool(ctx, 160, C)
   // Whiteboard on back wall
   ctx.fillStyle = C.lt; ctx.fillRect(84, 7, 152, 46)
   ctx.fillStyle = C.sg; ctx.fillRect(88, 11, 144, 38)
@@ -244,25 +303,39 @@ function _drawStudy(ctx, C) {
   ctx.fillStyle = C.lt; ctx.beginPath(); ctx.arc(262, 118, 9, Math.PI, 0); ctx.fill()
   ctx.strokeStyle = C.ink; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(262, 118, 9, Math.PI, 0); ctx.stroke()
   ctx.fillStyle = C.dk; ctx.fillRect(258, 172, 8, 6)
+  // Lamp light on floor
+  const lg = ctx.createRadialGradient(262, 176, 0, 262, 176, 40)
+  lg.addColorStop(0, 'rgba(255,255,255,0.06)'); lg.addColorStop(1, 'rgba(0,0,0,0)')
+  ctx.fillStyle = lg; ctx.fillRect(222, 160, 80, 56)
   // Desk (left side)
   _box3d(ctx, 12, 118, 120, 22, 14, C.sg, C.lt, C.md)
   ctx.fillStyle = C.dk; ctx.fillRect(22, 90, 52, 8); ctx.fillStyle = C.sg; ctx.fillRect(24, 91, 48, 6)
   // Monitor
   _screen(ctx, 28, 58, 54, 34, C.screen, C.dk)
+  // Desk clutter — coffee mug, notepad
+  ctx.fillStyle = C.md; ctx.beginPath(); ctx.arc(110, 101, 6, 0, Math.PI*2); ctx.fill()
+  ctx.fillStyle = C.lt; ctx.beginPath(); ctx.arc(110, 101, 4, 0, Math.PI*2); ctx.fill()
+  ctx.fillStyle = C.sg; ctx.fillRect(86, 94, 18, 14); ctx.strokeStyle = C.ink; ctx.lineWidth = 0.5; ctx.strokeRect(86, 94, 18, 14)
   // Chair
   _box3d(ctx, 20, 150, 44, 12, 8, C.md, C.sg, C.dk)
   ctx.fillStyle = C.sg; ctx.fillRect(28, 122, 28, 26); ctx.strokeStyle = C.ink; ctx.lineWidth = 1; ctx.strokeRect(28, 122, 28, 26)
   // Stack of books (right floor)
   _box3d(ctx, 198, 102, 40, 14, 6, C.md, C.sg, C.dk)
   _box3d(ctx, 201, 88, 34, 14, 5, C.lt, C.wHi, C.sg)
+  // Poster on left wall
+  _poster(ctx, 6, 10, 50, 40, C)
 }
 
 function _drawGaming(ctx, C) {
   _base(ctx, C)
+  _floorTiles(ctx, C, 22)
+  _lampPool(ctx, 130, C)
   // LED strip glow at floor level
-  const led = ctx.createLinearGradient(0, ROOM_H - 4, 0, ROOM_H - 16)
-  led.addColorStop(0, 'rgba(100,160,255,0.24)'); led.addColorStop(1, 'rgba(0,0,0,0)')
-  ctx.fillStyle = led; ctx.fillRect(40, ROOM_H - 16, 240, 16)
+  const led = ctx.createLinearGradient(0, ROOM_H - 4, 0, ROOM_H - 22)
+  led.addColorStop(0, 'rgba(100,160,255,0.28)'); led.addColorStop(1, 'rgba(0,0,0,0)')
+  ctx.fillStyle = led; ctx.fillRect(40, ROOM_H - 22, 240, 22)
+  // Wall LED strip
+  ctx.fillStyle = 'rgba(80,130,220,0.12)'; ctx.fillRect(0, WALL_H - 3, ROOM_W, 6)
   // Desk
   _box3d(ctx, 28, 118, 264, 20, 12, C.md, C.sg, C.dk)
   // Ultrawide monitor
@@ -271,31 +344,52 @@ function _drawGaming(ctx, C) {
   _screen(ctx, 218, 54, 68, 52, C.screen, '#141414')
   // Keyboard + mousepad
   ctx.fillStyle = '#181818'; ctx.fillRect(82, 93, 80, 11); ctx.fillStyle = '#262626'; ctx.fillRect(84, 94, 76, 9)
+  // Key highlights
+  ctx.fillStyle = 'rgba(255,255,255,0.06)'
+  for (let k = 0; k < 12; k++) ctx.fillRect(86 + k*6, 95, 4, 7)
   ctx.fillStyle = '#222222'; ctx.fillRect(178, 90, 56, 16); ctx.strokeStyle = '#444'; ctx.lineWidth = 0.5; ctx.strokeRect(178, 90, 56, 16)
+  // Energy drink can on desk
+  ctx.fillStyle = C.md; ctx.fillRect(180, 80, 8, 16); ctx.fillStyle = C.lt; ctx.fillRect(181, 82, 6, 8)
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 0.5; ctx.strokeRect(180, 80, 8, 16)
   // Gaming chair
   _box3d(ctx, 46, 162, 58, 44, 12, C.md, C.sg, C.dk)
   ctx.fillStyle = C.sg; ctx.fillRect(50, 106, 50, 52); ctx.strokeStyle = C.ink; ctx.lineWidth = 1; ctx.strokeRect(50, 106, 50, 52)
   ctx.fillStyle = C.md; ctx.fillRect(58, 102, 34, 10); ctx.strokeStyle = C.ink; ctx.strokeRect(58, 102, 34, 10)
+  // Armrests
+  _box3d(ctx, 46, 136, 10, 6, 6, C.dk, C.md, '#0e0e0e')
+  _box3d(ctx, 94, 136, 10, 6, 6, C.dk, C.md, '#0e0e0e')
   // Poster (left wall)
   _poster(ctx, 14, 9, 48, 46, { md:C.md, lt:C.sg, dk:C.dk, sg:C.md, ink:C.ink, wHi:C.lt })
   // Speaker (left desk)
   _box3d(ctx, 30, 116, 28, 38, 8, C.dk, C.md, '#0e0e0e')
-  // Controller
+  // Controller on desk
   ctx.fillStyle = C.md; ctx.fillRect(136, 94, 24, 14); ctx.fillStyle = C.dk; ctx.fillRect(138, 96, 20, 10)
   ctx.fillStyle = C.sg; ctx.beginPath(); ctx.arc(143, 100, 3, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(152, 100, 3, 0, Math.PI*2); ctx.fill()
+  // Screen glow on desk surface
+  const scGlow = ctx.createLinearGradient(66, 110, 66, 130)
+  scGlow.addColorStop(0, 'rgba(80,130,220,0.12)'); scGlow.addColorStop(1, 'rgba(0,0,0,0)')
+  ctx.fillStyle = scGlow; ctx.fillRect(66, 110, 188, 22)
 }
 
 function _drawChill(ctx, C) {
   _base(ctx, C)
+  _floorCarpet(ctx, C)
+  _lampPool(ctx, 160, C)
   // TV on back wall
   _screen(ctx, 90, 8, 140, 54, C.screen, C.dk)
+  // TV stand
+  _box3d(ctx, 106, 68, 108, 8, 8, C.md, C.sg, C.dk)
   // Rug
-  ctx.fillStyle = C.sg; ctx.globalAlpha = 0.18
-  ctx.fillRect(58, 130, 204, 72); ctx.globalAlpha = 1
-  ctx.strokeStyle = C.md; ctx.lineWidth = 1; ctx.globalAlpha = 0.25; ctx.strokeRect(62, 134, 196, 64); ctx.globalAlpha = 1
+  ctx.fillStyle = C.sg; ctx.globalAlpha = 0.22
+  ctx.fillRect(54, 128, 212, 80); ctx.globalAlpha = 1
+  ctx.strokeStyle = C.md; ctx.lineWidth = 2; ctx.globalAlpha = 0.20; ctx.strokeRect(58, 132, 204, 72); ctx.globalAlpha = 1
+  ctx.strokeStyle = C.md; ctx.lineWidth = 1; ctx.globalAlpha = 0.12; ctx.strokeRect(66, 140, 188, 56); ctx.globalAlpha = 1
   // Sofa
   _box3d(ctx, 42, 136, 236, 14, 10, C.sg, C.lt, C.md)
   ctx.fillStyle = C.md; ctx.fillRect(42, 120, 236, 18); ctx.fillStyle = C.sg; ctx.fillRect(46, 122, 228, 14)
+  // Cushions on sofa
+  ctx.fillStyle = C.lt; ctx.fillRect(54, 121, 28, 14); ctx.fillRect(152, 121, 28, 14); ctx.fillRect(238, 121, 26, 14)
+  ctx.strokeStyle = C.md; ctx.lineWidth = 0.5; ctx.strokeRect(54, 121, 28, 14); ctx.strokeRect(152, 121, 28, 14); ctx.strokeRect(238, 121, 26, 14)
   ctx.strokeStyle = C.dk; ctx.lineWidth = 1
   ctx.beginPath(); ctx.moveTo(118, 120); ctx.lineTo(118, 138); ctx.stroke()
   ctx.beginPath(); ctx.moveTo(194, 120); ctx.lineTo(194, 138); ctx.stroke()
@@ -304,20 +398,28 @@ function _drawChill(ctx, C) {
   ctx.strokeStyle = C.ink; ctx.lineWidth = 1; ctx.strokeRect(42, 120, 236, 18)
   // Coffee table
   _box3d(ctx, 90, 182, 140, 10, 12, C.sg, C.lt, C.md)
-  ctx.fillStyle = C.dk; ctx.fillRect(100, 169, 28, 4)
-  ctx.beginPath(); ctx.arc(168, 171, 6, 0, Math.PI*2); ctx.fill()
+  // Items on coffee table
+  ctx.fillStyle = C.dk; ctx.fillRect(100, 169, 28, 4)  // book
+  ctx.beginPath(); ctx.arc(168, 171, 6, 0, Math.PI*2); ctx.fill()  // mug
+  ctx.fillStyle = C.md; ctx.beginPath(); ctx.arc(168, 171, 3, 0, Math.PI*2); ctx.fill()
   // Plant (left corner)
   ctx.fillStyle = C.dk; ctx.fillRect(16, 168, 10, 12)
   ctx.fillStyle = C.sg; ctx.beginPath(); ctx.arc(21, 162, 14, 0, Math.PI*2); ctx.fill()
   ctx.fillStyle = C.md; ctx.beginPath(); ctx.arc(14, 157, 9, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(28, 155, 9, 0, Math.PI*2); ctx.fill()
   ctx.strokeStyle = C.ink; ctx.lineWidth = 0.5; ctx.beginPath(); ctx.arc(21, 162, 14, 0, Math.PI*2); ctx.stroke()
+  // Side lamp
+  ctx.strokeStyle = C.md; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(296, 174); ctx.lineTo(296, 130); ctx.stroke()
+  ctx.fillStyle = C.sg; ctx.fillRect(285, 128, 22, 5)
+  ctx.fillStyle = C.lt; ctx.beginPath(); ctx.arc(296, 128, 8, Math.PI, 0); ctx.fill()
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(296, 128, 8, Math.PI, 0); ctx.stroke()
 }
 
 function _drawGym(ctx, C) {
   _base(ctx, C)
-  // Rubber floor diagonal stripes
-  ctx.strokeStyle = C.md; ctx.globalAlpha = 0.10; ctx.lineWidth = 1
-  for (let x = -ROOM_H; x < ROOM_W + ROOM_H; x += 18) {
+  _floorTiles(ctx, C, 24)
+  // Rubber floor stripes
+  ctx.strokeStyle = C.md; ctx.globalAlpha = 0.08; ctx.lineWidth = 1
+  for (let x = -ROOM_H; x < ROOM_W + ROOM_H; x += 22) {
     ctx.beginPath(); ctx.moveTo(x, WALL_H); ctx.lineTo(x + ROOM_H, ROOM_H); ctx.stroke()
   }
   ctx.globalAlpha = 1
@@ -326,6 +428,11 @@ function _drawGym(ctx, C) {
   ctx.fillStyle = C.sg; ctx.fillRect(126, 28, 68, 3); ctx.fillRect(130, 34, 58, 3)
   // Windows
   _win(ctx, 10, 8, 70, 48, C); _win(ctx, 240, 8, 70, 48, C)
+  // Ceiling light
+  ctx.fillStyle = C.lt; ctx.fillRect(130, 0, 60, 5)
+  ctx.fillStyle = C.sg; ctx.fillRect(130, 5, 60, 3)
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 1; ctx.strokeRect(130, 0, 60, 8)
+  _lampPool(ctx, 160, C)
   // Pull-up bar
   ctx.fillStyle = C.dk; ctx.fillRect(74, 12, 172, 6)
   ctx.fillStyle = C.md; ctx.fillRect(68, 8, 10, 16); ctx.fillRect(242, 8, 10, 16)
@@ -333,6 +440,8 @@ function _drawGym(ctx, C) {
   // Treadmill (left)
   _box3d(ctx, 14, 154, 104, 28, 18, C.md, C.sg, C.dk)
   ctx.fillStyle = C.dk; ctx.fillRect(24, 115, 84, 8); ctx.strokeStyle = C.ink; ctx.lineWidth = 0.5; ctx.strokeRect(24, 115, 84, 8)
+  // Display screen on treadmill
+  ctx.fillStyle = C.screen; ctx.fillRect(50, 104, 24, 12); ctx.strokeStyle = C.lt; ctx.lineWidth = 0.5; ctx.strokeRect(52, 106, 20, 8)
   ctx.strokeStyle = C.md; ctx.lineWidth = 3
   ctx.beginPath(); ctx.moveTo(24, 126); ctx.lineTo(24, 107); ctx.stroke()
   ctx.beginPath(); ctx.moveTo(108, 126); ctx.lineTo(108, 107); ctx.stroke()
@@ -352,10 +461,15 @@ function _drawGym(ctx, C) {
   ctx.fillStyle = C.md; ctx.fillRect(36, 170, 4, 8); ctx.fillRect(58, 170, 4, 8); ctx.fillRect(36, 172, 28, 4)
   ctx.fillStyle = C.dk; ctx.fillRect(32, 168, 8, 12); ctx.fillRect(56, 168, 8, 12)
   ctx.strokeStyle = C.ink; ctx.lineWidth = 0.5; ctx.strokeRect(32, 168, 8, 12); ctx.strokeRect(56, 168, 8, 12)
+  // Water bottle on floor
+  ctx.fillStyle = C.lt; ctx.fillRect(146, 174, 7, 18); ctx.fillStyle = C.md; ctx.fillRect(147, 172, 5, 4)
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 0.5; ctx.strokeRect(146, 174, 7, 18)
 }
 
 function _drawLibrary(ctx, C) {
   _base(ctx, C)
+  _floorPlanks(ctx, C, true)
+  _lampPool(ctx, 160, C)
   // Full back-wall bookshelf
   _shelf(ctx, 6, 6, 308, 58, 3, C)
   // Left floor bookshelf
@@ -367,33 +481,52 @@ function _drawLibrary(ctx, C) {
   // Chairs
   _box3d(ctx, 96, 188, 40, 10, 8, C.md, C.sg, C.dk)
   _box3d(ctx, 188, 188, 40, 10, 8, C.md, C.sg, C.dk)
+  ctx.fillStyle = C.sg; ctx.fillRect(100, 162, 32, 28); ctx.fillRect(192, 162, 32, 28)
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 0.8; ctx.strokeRect(100, 162, 32, 28); ctx.strokeRect(192, 162, 32, 28)
   // Desk lamp
   ctx.strokeStyle = C.md; ctx.lineWidth = 2
   ctx.beginPath(); ctx.moveTo(164, 147); ctx.lineTo(164, 128); ctx.lineTo(180, 121); ctx.stroke()
   ctx.fillStyle = C.sg; ctx.fillRect(175, 118, 24, 6)
   ctx.fillStyle = C.lt; ctx.beginPath(); ctx.arc(187, 118, 8, Math.PI, 0); ctx.fill()
   ctx.strokeStyle = C.ink; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(187, 118, 8, Math.PI, 0); ctx.stroke()
+  // Lamp light pool on table
+  const tl = ctx.createRadialGradient(187, 164, 0, 187, 164, 50)
+  tl.addColorStop(0, 'rgba(255,255,255,0.09)'); tl.addColorStop(1, 'rgba(0,0,0,0)')
+  ctx.fillStyle = tl; ctx.fillRect(137, 148, 100, 36)
   // Globe
   ctx.fillStyle = C.md; ctx.beginPath(); ctx.arc(108, 143, 11, 0, Math.PI*2); ctx.fill()
   ctx.strokeStyle = C.ink; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.arc(108, 143, 11, 0, Math.PI*2); ctx.stroke()
   ctx.beginPath(); ctx.moveTo(97, 143); ctx.lineTo(119, 143); ctx.stroke()
   ctx.beginPath(); ctx.ellipse(108, 143, 5, 11, 0, 0, Math.PI*2); ctx.stroke()
   ctx.fillStyle = C.dk; ctx.fillRect(105, 154, 6, 5); ctx.fillRect(102, 158, 12, 3)
+  // Open book on table
+  ctx.fillStyle = C.lt; ctx.fillRect(128, 155, 44, 8)
+  ctx.strokeStyle = C.md; ctx.lineWidth = 0.5; ctx.beginPath(); ctx.moveTo(150, 155); ctx.lineTo(150, 163); ctx.stroke()
+  ctx.strokeStyle = C.dk; ctx.lineWidth = 0.3
+  for (let l = 0; l < 5; l++) { ctx.beginPath(); ctx.moveTo(132, 157 + l); ctx.lineTo(148, 157 + l); ctx.stroke() }
+  for (let l = 0; l < 5; l++) { ctx.beginPath(); ctx.moveTo(152, 157 + l); ctx.lineTo(168, 157 + l); ctx.stroke() }
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 0.5; ctx.strokeRect(128, 155, 44, 8)
   // Rug
   ctx.fillStyle = C.sg; ctx.globalAlpha = 0.16; ctx.fillRect(78, 144, 164, 68); ctx.globalAlpha = 1
-  ctx.strokeStyle = C.md; ctx.lineWidth = 1; ctx.globalAlpha = 0.28; ctx.strokeRect(82, 148, 156, 60); ctx.globalAlpha = 1
+  ctx.strokeStyle = C.md; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.22; ctx.strokeRect(82, 148, 156, 60); ctx.globalAlpha = 1
+  ctx.strokeStyle = C.md; ctx.lineWidth = 0.5; ctx.globalAlpha = 0.12; ctx.strokeRect(90, 156, 140, 44); ctx.globalAlpha = 1
 }
 
 function _drawMusic(ctx, C) {
   _base(ctx, C)
+  _floorPlanks(ctx, C)
   // Soundproof foam diamond pattern on wall
-  ctx.fillStyle = C.wHi; ctx.globalAlpha = 0.20
+  ctx.fillStyle = C.wHi; ctx.globalAlpha = 0.18
   const fs = 12
   for (let fx = 0; fx < ROOM_W; fx += fs)
     for (let fy = 0; fy < WALL_H; fy += fs)
       if ((Math.floor(fx/fs) + Math.floor(fy/fs)) % 2 === 0)
         ctx.fillRect(fx + 2, fy + 2, fs - 4, fs - 4)
   ctx.globalAlpha = 1
+  // Studio lighting - warm strip
+  const strip = ctx.createLinearGradient(0, WALL_H, 0, WALL_H + 30)
+  strip.addColorStop(0, 'rgba(255,240,200,0.08)'); strip.addColorStop(1, 'rgba(0,0,0,0)')
+  ctx.fillStyle = strip; ctx.fillRect(0, WALL_H, ROOM_W, 30)
   // Piano / keyboard
   _box3d(ctx, 36, 130, 200, 30, 14, C.md, C.sg, C.dk)
   const keyY = 95; const kw = 8; const kh = 18
@@ -404,6 +537,14 @@ function _drawMusic(ctx, C) {
   for (let k = 0; k < 21; k++) {
     if (k % 7 !== 2 && k % 7 !== 6) { ctx.fillStyle = C.dk; ctx.fillRect(42 + k * kw + kw * 0.6, keyY, kw * 0.55, kh * 0.65) }
   }
+  // Sheet music stand
+  ctx.strokeStyle = C.md; ctx.lineWidth = 2
+  ctx.beginPath(); ctx.moveTo(236, 190); ctx.lineTo(236, 120); ctx.stroke()
+  ctx.beginPath(); ctx.moveTo(224, 190); ctx.lineTo(248, 190); ctx.stroke()
+  ctx.fillStyle = C.lt; ctx.fillRect(218, 104, 36, 22); ctx.strokeStyle = C.ink; ctx.lineWidth = 1; ctx.strokeRect(218, 104, 36, 22)
+  // Music lines on stand
+  ctx.strokeStyle = C.dk; ctx.lineWidth = 0.5
+  for (let sl = 0; sl < 5; sl++) { ctx.beginPath(); ctx.moveTo(222, 108 + sl*3); ctx.lineTo(250, 108 + sl*3); ctx.stroke() }
   // Guitar silhouette (left wall)
   ctx.fillStyle = C.sg
   ctx.beginPath(); ctx.ellipse(22, 32, 12, 16, 0, 0, Math.PI*2); ctx.fill()
@@ -412,33 +553,47 @@ function _drawMusic(ctx, C) {
   ctx.strokeStyle = C.ink; ctx.lineWidth = 0.8
   ctx.beginPath(); ctx.ellipse(22, 32, 12, 16, 0, 0, Math.PI*2); ctx.stroke()
   ctx.beginPath(); ctx.ellipse(22, 55, 9, 12, 0, 0, Math.PI*2); ctx.stroke()
+  // Guitar strings
+  ctx.strokeStyle = C.lt; ctx.globalAlpha = 0.30; ctx.lineWidth = 0.5
+  for (let s = 0; s < 6; s++) { ctx.beginPath(); ctx.moveTo(22 - 2 + s*0.8, 16); ctx.lineTo(22 - 2 + s*0.8, 67); ctx.stroke() }
+  ctx.globalAlpha = 1
   // Amp (left floor)
   _box3d(ctx, 16, 190, 60, 52, 10, C.md, C.sg, C.dk)
   ctx.fillStyle = C.sg; ctx.beginPath(); ctx.arc(46, 156, 18, 0, Math.PI*2); ctx.fill()
   ctx.fillStyle = C.dk; ctx.beginPath(); ctx.arc(46, 156, 10, 0, Math.PI*2); ctx.fill()
   ctx.strokeStyle = C.ink; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(46, 156, 18, 0, Math.PI*2); ctx.stroke()
+  // Volume knobs on amp
+  for (let kn = 0; kn < 3; kn++) {
+    ctx.fillStyle = C.md; ctx.beginPath(); ctx.arc(25 + kn * 16, 192, 4, 0, Math.PI*2); ctx.fill()
+    ctx.strokeStyle = C.dk; ctx.lineWidth = 0.5; ctx.beginPath(); ctx.arc(25 + kn * 16, 192, 4, 0, Math.PI*2); ctx.stroke()
+  }
   // Mic stand (center)
   ctx.strokeStyle = C.sg; ctx.lineWidth = 3
-  ctx.beginPath(); ctx.moveTo(248, 194); ctx.lineTo(248, 122); ctx.stroke()
+  ctx.beginPath(); ctx.moveTo(168, 194); ctx.lineTo(168, 122); ctx.stroke()
   ctx.lineWidth = 2
-  ctx.beginPath(); ctx.moveTo(248, 194); ctx.lineTo(232, 206); ctx.stroke()
-  ctx.beginPath(); ctx.moveTo(248, 194); ctx.lineTo(264, 206); ctx.stroke()
-  ctx.fillStyle = C.lt; ctx.beginPath(); ctx.ellipse(248, 114, 8, 14, 0, 0, Math.PI*2); ctx.fill()
-  ctx.strokeStyle = C.ink; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(248, 114, 8, 14, 0, 0, Math.PI*2); ctx.stroke()
+  ctx.beginPath(); ctx.moveTo(168, 194); ctx.lineTo(152, 206); ctx.stroke()
+  ctx.beginPath(); ctx.moveTo(168, 194); ctx.lineTo(184, 206); ctx.stroke()
+  ctx.fillStyle = C.lt; ctx.beginPath(); ctx.ellipse(168, 114, 8, 14, 0, 0, Math.PI*2); ctx.fill()
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(168, 114, 8, 14, 0, 0, Math.PI*2); ctx.stroke()
   ctx.strokeStyle = C.dk; ctx.lineWidth = 0.5
-  for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.moveTo(241, 102 + i * 6); ctx.lineTo(255, 102 + i * 6); ctx.stroke() }
+  for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.moveTo(161, 102 + i * 6); ctx.lineTo(175, 102 + i * 6); ctx.stroke() }
   // Speaker stack (right)
   _box3d(ctx, 258, 190, 54, 58, 8, C.md, C.sg, C.dk)
   _box3d(ctx, 261, 133, 48, 22, 6, C.dk, C.md, '#0a0a0a')
   ctx.fillStyle = C.sg; ctx.beginPath(); ctx.arc(285, 144, 14, 0, Math.PI*2); ctx.fill()
   ctx.fillStyle = C.dk; ctx.beginPath(); ctx.arc(285, 144, 7, 0, Math.PI*2); ctx.fill()
   ctx.strokeStyle = C.ink; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(285, 144, 14, 0, Math.PI*2); ctx.stroke()
+  // Stool at piano
+  _box3d(ctx, 128, 172, 30, 10, 8, C.dk, C.md, '#0a0a0a')
+  ctx.fillStyle = C.sg; ctx.beginPath(); ctx.ellipse(143, 168, 15, 6, 0, 0, Math.PI*2); ctx.fill()
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 0.5; ctx.beginPath(); ctx.ellipse(143, 168, 15, 6, 0, 0, Math.PI*2); ctx.stroke()
 }
 
 function _drawKitchen(ctx, C) {
   _base(ctx, C)
+  _floorTiles(ctx, C, 18)
   // Back-wall tile pattern
-  ctx.strokeStyle = C.md; ctx.globalAlpha = 0.22; ctx.lineWidth = 0.5
+  ctx.strokeStyle = C.md; ctx.globalAlpha = 0.20; ctx.lineWidth = 0.5
   const ts = 14
   for (let tx = 0; tx < ROOM_W; tx += ts)
     for (let ty = 0; ty < WALL_H; ty += ts)
@@ -456,7 +611,8 @@ function _drawKitchen(ctx, C) {
   ctx.strokeStyle = C.ink; ctx.lineWidth = 1; ctx.strokeRect(8, 112, 192, 50)
   // Microwave
   _box3d(ctx, 16, 99, 54, 18, 8, C.sg, C.lt, C.md)
-  ctx.fillStyle = C.screen; ctx.fillRect(20, 85, 20, 10); ctx.strokeStyle = C.ink; ctx.lineWidth = 0.5; ctx.strokeRect(20, 85, 20, 10)
+  ctx.fillStyle = C.screen; ctx.fillRect(20, 85, 20, 10); ctx.strokeStyle = C.lt; ctx.lineWidth = 0.5; ctx.strokeRect(22, 87, 16, 6)
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 0.5; ctx.strokeRect(20, 85, 20, 10)
   // Toaster
   _box3d(ctx, 84, 100, 36, 16, 6, C.md, C.sg, C.dk)
   ctx.fillStyle = C.dk; ctx.fillRect(88, 84, 10, 4); ctx.fillRect(102, 84, 10, 4)
@@ -465,20 +621,41 @@ function _drawKitchen(ctx, C) {
   ctx.strokeStyle = C.ink; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(150, 91, 12, 0, Math.PI*2); ctx.stroke()
   ctx.strokeStyle = C.md; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(160, 87); ctx.lineTo(168, 81); ctx.stroke()
   ctx.beginPath(); ctx.arc(144, 91, 8, -Math.PI * 0.6, Math.PI * 0.6); ctx.stroke()
+  // Mug beside kettle
+  ctx.fillStyle = C.lt; ctx.fillRect(172, 87, 8, 12); ctx.fillStyle = C.sg; ctx.beginPath(); ctx.arc(180, 94, 3, -Math.PI*0.5, Math.PI*0.5); ctx.stroke()
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 0.5; ctx.strokeRect(172, 87, 8, 12)
   // Fridge (right, tall)
   _box3d(ctx, 262, 126, 50, 74, 10, C.md, C.lt, C.sg)
   ctx.fillStyle = C.lt; ctx.fillRect(264, 88, 46, 36); ctx.fillStyle = C.sg; ctx.fillRect(264, 124, 46, 4); ctx.fillStyle = C.lt; ctx.fillRect(264, 128, 46, 70)
   ctx.strokeStyle = C.ink; ctx.lineWidth = 0.8; ctx.strokeRect(264, 88, 46, 36); ctx.strokeRect(264, 128, 46, 70)
   ctx.fillStyle = C.dk; ctx.fillRect(282, 100, 4, 16); ctx.fillRect(282, 138, 4, 22)
+  // Fridge magnets
+  ctx.fillStyle = C.sg; ctx.fillRect(268, 92, 8, 6); ctx.fillRect(290, 94, 6, 8)
+  ctx.strokeStyle = C.md; ctx.lineWidth = 0.5; ctx.strokeRect(268, 92, 8, 6); ctx.strokeRect(290, 94, 6, 8)
   // Pendant light
   ctx.strokeStyle = C.md; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(160, 0); ctx.lineTo(160, 14); ctx.stroke()
   ctx.fillStyle = C.lt; ctx.fillRect(148, 14, 24, 10)
-  ctx.fillStyle = 'rgba(255,255,220,0.14)'; ctx.fillRect(150, 24, 20, 4)
+  ctx.fillStyle = 'rgba(255,255,220,0.16)'; ctx.fillRect(150, 24, 20, 4)
   ctx.strokeStyle = C.ink; ctx.lineWidth = 1; ctx.strokeRect(148, 14, 24, 10)
+  _lampPool(ctx, 160, C)
+  // Fruit bowl on counter
+  ctx.fillStyle = C.sg; ctx.beginPath(); ctx.ellipse(108, 105, 12, 5, 0, 0, Math.PI*2); ctx.fill()
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 0.5; ctx.beginPath(); ctx.ellipse(108, 105, 12, 5, 0, 0, Math.PI*2); ctx.stroke()
+  for (let f = 0; f < 3; f++) {
+    ctx.fillStyle = f % 2 === 0 ? C.md : C.lt; ctx.beginPath(); ctx.arc(100 + f*8, 100, 5, 0, Math.PI*2); ctx.fill()
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 0.3; ctx.beginPath(); ctx.arc(100 + f*8, 100, 5, 0, Math.PI*2); ctx.stroke()
+  }
+  // Stools at counter
+  _box3d(ctx, 38, 178, 20, 8, 6, C.md, C.sg, C.dk)
+  _box3d(ctx, 72, 178, 20, 8, 6, C.md, C.sg, C.dk)
+  ctx.fillStyle = C.sg; ctx.beginPath(); ctx.ellipse(48, 174, 10, 4, 0, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.ellipse(82, 174, 10, 4, 0, 0, Math.PI*2); ctx.fill()
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 0.5; ctx.beginPath(); ctx.ellipse(48, 174, 10, 4, 0, 0, Math.PI*2); ctx.stroke(); ctx.beginPath(); ctx.ellipse(82, 174, 10, 4, 0, 0, Math.PI*2); ctx.stroke()
 }
 
 function _drawArt(ctx, C) {
   _base(ctx, C)
+  _floorCarpet(ctx, C)
+  _lampPool(ctx, 160, C)
   // Large window (right)
   _win(ctx, 190, 6, 122, 58, C)
   // Wall frames (left)
@@ -501,39 +678,64 @@ function _drawArt(ctx, C) {
   ctx.beginPath(); ctx.moveTo(152, 190); ctx.lineTo(140, 86); ctx.stroke()
   ctx.beginPath(); ctx.moveTo(168, 190); ctx.lineTo(180, 86); ctx.stroke()
   ctx.beginPath(); ctx.moveTo(156, 170); ctx.lineTo(164, 170); ctx.stroke()
+  // Canvas on easel - work in progress painting
   ctx.fillStyle = C.wHi; ctx.fillRect(130, 74, 60, 78)
-  ctx.strokeStyle = C.sg; ctx.lineWidth = 1; ctx.globalAlpha = 0.55
+  // Painting (abstract, monochrome)
+  ctx.strokeStyle = C.md; ctx.globalAlpha = 0.45; ctx.lineWidth = 2
   ctx.beginPath(); ctx.ellipse(160, 102, 14, 18, 0, 0, Math.PI*2); ctx.stroke()
-  ctx.beginPath(); ctx.moveTo(148, 122); ctx.lineTo(148, 150); ctx.stroke()
-  ctx.beginPath(); ctx.moveTo(148, 130); ctx.lineTo(136, 140); ctx.stroke()
-  ctx.beginPath(); ctx.moveTo(148, 130); ctx.lineTo(160, 140); ctx.stroke()
+  ctx.globalAlpha = 0.22; ctx.fillStyle = C.sg; ctx.fillRect(135, 88, 24, 48)
+  ctx.globalAlpha = 0.18; ctx.fillStyle = C.md
+  ctx.beginPath(); ctx.arc(172, 118, 12, 0, Math.PI*2); ctx.fill()
   ctx.globalAlpha = 1
   ctx.strokeStyle = C.dk; ctx.lineWidth = 1.5; ctx.strokeRect(130, 74, 60, 78)
-  // Paint splatter
-  ctx.fillStyle = C.sg; ctx.globalAlpha = 0.18
-  const splats = [[60,172,4],[100,182,3],[88,192,6],[70,162,2],[118,170,3],[92,202,5]]
+  // Chair at easel
+  _box3d(ctx, 144, 192, 32, 8, 6, C.dk, C.md, '#0a0a0a')
+  ctx.fillStyle = C.md; ctx.fillRect(148, 178, 24, 16); ctx.strokeStyle = C.ink; ctx.lineWidth = 0.5; ctx.strokeRect(148, 178, 24, 16)
+  // Tall shelving unit (right of easel)
+  _box3d(ctx, 216, 154, 46, 56, 10, C.md, C.sg, C.dk)
+  for (let sh = 0; sh < 4; sh++) {
+    ctx.fillStyle = C.lt; ctx.fillRect(218, 100 + sh * 14, 42, 12); ctx.strokeStyle = C.ink; ctx.lineWidth = 0.5; ctx.strokeRect(218, 100 + sh * 14, 42, 12)
+    // Items on shelves
+    const si = sh; ctx.fillStyle = C.sg; ctx.fillRect(220, 97 + si*14, 8, 8); ctx.strokeStyle = C.ink; ctx.lineWidth = 0.3; ctx.strokeRect(220, 97 + si*14, 8, 8)
+  }
+  // Paint splatter on floor
+  ctx.fillStyle = C.sg; ctx.globalAlpha = 0.14
+  const splats = [[60,172,4],[100,182,3],[88,192,6],[70,162,2],[118,170,3],[92,202,5],[76,210,4]]
   for (const [sx, sy, sr] of splats) { ctx.beginPath(); ctx.arc(sx, sy, sr, 0, Math.PI*2); ctx.fill() }
   ctx.globalAlpha = 1
+  // Plant in corner
+  ctx.fillStyle = C.dk; ctx.fillRect(10, 176, 14, 24)
+  ctx.fillStyle = C.sg; ctx.beginPath(); ctx.arc(17, 170, 14, 0, Math.PI*2); ctx.fill()
+  ctx.fillStyle = C.md; ctx.beginPath(); ctx.arc(10, 165, 8, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(24, 163, 8, 0, Math.PI*2); ctx.fill()
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 0.5; ctx.beginPath(); ctx.arc(17, 170, 14, 0, Math.PI*2); ctx.stroke()
 }
 
 function _drawBedroom(ctx, C) {
   _base(ctx, C)
+  _floorPlanks(ctx, C)
+  // Window (centered)
   _win(ctx, 106, 7, 108, 50, C)
+  _lampPool(ctx, 160, C)
   // Wardrobe (right)
   _box3d(ctx, 240, 152, 72, 88, 10, C.sg, C.lt, C.md)
   ctx.fillStyle = C.lt; ctx.fillRect(242, 66, 32, 84); ctx.fillRect(278, 66, 30, 84)
   ctx.strokeStyle = C.ink; ctx.lineWidth = 0.8; ctx.strokeRect(242, 66, 32, 84); ctx.strokeRect(278, 66, 30, 84)
   ctx.fillStyle = C.md; ctx.fillRect(270, 106, 5, 10); ctx.fillRect(278, 106, 5, 10)
+  // Shoe pile at base of wardrobe
+  ctx.fillStyle = C.dk; ctx.fillRect(248, 190, 14, 8); ctx.fillStyle = C.md; ctx.fillRect(262, 192, 12, 6)
   // Bed base
   _box3d(ctx, 16, 164, 148, 30, 16, C.md, C.sg, C.dk)
   // Mattress
   _box3d(ctx, 18, 152, 144, 14, 14, C.lt, C.wHi, C.sg)
-  // Headboard
+  // Headboard (with horizontal boards)
   ctx.fillStyle = C.md; ctx.fillRect(16, 84, 8, 66); ctx.fillStyle = C.sg; ctx.fillRect(20, 88, 4, 58)
   ctx.strokeStyle = C.ink; ctx.lineWidth = 1; ctx.strokeRect(16, 84, 8, 66)
-  // Pillow
+  // Horizontal decorative bars on headboard
+  ctx.strokeStyle = C.lt; ctx.globalAlpha = 0.30; ctx.lineWidth = 0.5
+  for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.moveTo(16, 96 + i * 14); ctx.lineTo(24, 96 + i * 14); ctx.stroke() }
+  ctx.globalAlpha = 1
+  // Pillow + blanket
   _box3d(ctx, 22, 122, 56, 10, 12, C.lt, C.wHi, C.sg)
-  // Blanket
   ctx.fillStyle = C.sg; ctx.fillRect(18, 134, 144, 16); ctx.fillStyle = C.lt; ctx.fillRect(20, 136, 140, 12)
   ctx.strokeStyle = C.md; ctx.lineWidth = 0.5
   for (let i = 0; i < 7; i++) ctx.strokeRect(22 + i * 20, 137, 18, 10)
@@ -544,9 +746,19 @@ function _drawBedroom(ctx, C) {
   ctx.fillStyle = C.lt; ctx.beginPath(); ctx.arc(200, 120, 8, Math.PI, 0); ctx.fill()
   ctx.strokeStyle = C.ink; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(200, 120, 8, Math.PI, 0); ctx.stroke()
   ctx.fillStyle = C.dk; ctx.fillRect(178, 132, 26, 4)
-  // Desk
+  // Phone on nightstand
+  ctx.fillStyle = C.dk; ctx.fillRect(184, 151, 7, 12); ctx.fillStyle = C.screen; ctx.fillRect(185, 152, 5, 10)
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 0.5; ctx.strokeRect(184, 151, 7, 12)
+  // Desk (small corner desk)
   _box3d(ctx, 164, 138, 68, 18, 10, C.sg, C.lt, C.md)
   _screen(ctx, 166, 102, 44, 30, C.screen, C.dk)
+  // Cup on desk
+  ctx.fillStyle = C.md; ctx.fillRect(216, 128, 7, 10); ctx.fillStyle = C.lt; ctx.beginPath(); ctx.arc(219, 128, 3, Math.PI, 0); ctx.fill()
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 0.5; ctx.strokeRect(216, 128, 7, 10)
+  // Throw blanket hanging off bed
+  ctx.fillStyle = C.lt; ctx.globalAlpha = 0.35
+  ctx.fillRect(80, 162, 60, 16)
+  ctx.globalAlpha = 1
 }
 
 const ROOM_DRAW = {
@@ -864,7 +1076,7 @@ export function placeSprite(normie, sceneEl) {
   let startX, startY
   if (isOutdoor) {
     startX = 30 + Math.random() * 660
-    startY = 15 + Math.random() * 40
+    startY = 54 + Math.random() * 10   // place feet near ground surface (~60px)
     cvs.style.left   = Math.round(startX) + 'px'
     cvs.style.bottom = Math.round(startY) + 'px'
     cvs.style.top    = 'auto'
@@ -941,9 +1153,9 @@ export function setSpriteScene(normie, newSceneEl) {
   if (ss.isOutdoor) {
     // Enter from left or right edge of outdoor area
     ss.x = Math.random() < 0.5 ? -20 : 740
-    ss.y = 15 + Math.random() * 30
+    ss.y = 56
     ss.targetX = 60 + Math.random() * 580
-    ss.targetY = 15 + Math.random() * 40
+    ss.targetY = 54 + Math.random() * 12
     ss.cvs.style.left   = Math.round(ss.x) + 'px'
     ss.cvs.style.bottom = Math.round(ss.y) + 'px'
     ss.cvs.style.top    = 'auto'
@@ -990,7 +1202,7 @@ export function animateSprites(normieMap, nightAlpha, dt) {
         if (ss._moveTimer <= 0) {
           if (ss.isOutdoor) {
             ss.targetX = 20  + Math.random() * 680
-            ss.targetY = 10  + Math.random() * 80
+            ss.targetY = 52  + Math.random() * 14  // stay on ground level
           } else {
             ss.targetX = 4   + Math.random() * (88 - SPRITE_W_PCT)
             ss.targetY = 3   + Math.random() * 10

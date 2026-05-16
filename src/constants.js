@@ -78,8 +78,8 @@ export const TICK_MS             = 1000
 export const GAME_MINS_PER_TICK  = 1
 export const MAX_OFFLINE_MINS    = 20160
 
-export const COINS_CLICK_BASE           = 10
-export const COINS_PER_TICK_BASE        = 0.8
+export const COINS_CLICK_BASE           = 8
+export const COINS_PER_TICK_BASE        = 0.40
 export const COINS_NEED_SATISFIED       = 20
 export const COINS_CRITICAL_PENALTY     = 5
 export const COINS_FEED_COST            = 30
@@ -87,7 +87,7 @@ export const COINS_ENERGY_DRINK_COST    = 45
 export const COINS_STUDY_SESSION_COST   = 40
 export const COINS_PARTY_COST           = 70
 export const COINS_ACTIVITY_SWITCH      = 2
-export const COMBO_WINDOW_MS            = 2800
+export const COMBO_WINDOW_MS            = 2200
 export const COMBO_MAX                  = 8
 
 export const UPGRADES = [

@@ -17,6 +17,7 @@ import {
 } from './state.js'
 import { lookupNormies, fetchNormiesData } from './wallet.js'
 import { preloadNormieImage } from './pixel-renderer.js'
+import { submitScore } from './leaderboard.js'
 import {
   buildDorm, placeSprite, removeSprite, animateSprites,
   updateOccupancy, updateDayNight, setSpriteScene, onActivityChanged,
@@ -29,6 +30,7 @@ import {
   showAchievementToast, showOfflineModal,
   renderHowItWorks,
   renderLoading, updateLoadProgress,
+  renderLeaderboard,
 } from './ui.js'
 
 export class App {
@@ -291,7 +293,7 @@ export class App {
 
     this.root.innerHTML = `
       <div class="header">
-        <div class="logo">NORMDORM<span class="logo-sub">pixel dorm life</span></div>
+        <div class="logo" id="logo-home">NORMDORM<span class="logo-sub">pixel dorm life</span></div>
         <div class="header-right">
           <div class="coin-pill" id="coin-display">
             <span class="coin-icon">🪙</span>
@@ -310,6 +312,7 @@ export class App {
         <button class="tab-btn active" data-tab="dorm">🏠 DORM</button>
         <button class="tab-btn" data-tab="shop">🛒 SHOP</button>
         <button class="tab-btn" data-tab="achievements">🏆 ACHIEVEMENTS</button>
+        <button class="tab-btn" data-tab="leaderboard">🏅 LEADERBOARD</button>
       </div>
 
       <div class="main-layout">
@@ -366,6 +369,10 @@ export class App {
         <div class="tab-content" id="tab-achievements">
           <div class="ach-wrap" id="ach-panel"></div>
         </div>
+
+        <div class="tab-content" id="tab-leaderboard">
+          <div class="lb-wrap" id="lb-panel"></div>
+        </div>
       </div>
 
       <div id="notif-stack" class="notif-stack"></div>`
@@ -373,11 +380,13 @@ export class App {
     this.root.querySelectorAll('.tab-btn').forEach(btn => btn.onclick = () => this._tab(btn.dataset.tab))
     document.getElementById('theme-toggle').onclick = toggleTheme
     document.getElementById('btn-leave').onclick    = () => { this._stopAll(); this._renderConnect() }
+    document.getElementById('logo-home').onclick    = () => { this._stopAll(); this._renderConnect() }
 
     renderRoster(this.normies)
     renderShop(this.purchasedUpgrades, this.coins, id => this._buyUpgrade(id))
     renderAchievements(this.earnedAchievements)
     updateStats(this.normies, this.coins, this.gameMinute, calcDormHappiness(this.normies), 0)
+    renderLeaderboard(this.address, this.isDemo)
 
     document.addEventListener('normie-click',  e => this._onNormieClick(e.detail.id))
     document.addEventListener('normie-action', e => this._onNormieAction(e.detail.action, e.detail.id))
@@ -408,6 +417,7 @@ export class App {
     this.root.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === `tab-${tab}`))
     if (tab === 'shop')         renderShop(this.purchasedUpgrades, this.coins, id => this._buyUpgrade(id))
     if (tab === 'achievements') renderAchievements(this.earnedAchievements)
+    if (tab === 'leaderboard')  renderLeaderboard(this.address, this.isDemo)
   }
 
   _onNormieClick(id) {
@@ -481,7 +491,7 @@ export class App {
     const upg = UPGRADES.find(u => u.id === upgradeId); if (!upg) return
     const lvl = this.purchasedUpgrades[upgradeId] || 0
     if (lvl >= upg.maxLevel) { notify('Already maxed!', 'warn'); return }
-    const cost = Math.floor(upg.cost * Math.pow(1.65, lvl))
+    const cost = Math.floor(upg.cost * Math.pow(1.9, lvl))
     if (this.coins < cost) { notify('Not enough coins!', 'warn'); return }
     this.coins -= cost
     this.purchasedUpgrades[upgradeId] = lvl + 1
@@ -531,7 +541,11 @@ export class App {
         if (n.needs[k] < 8 && !n._warned?.[k]) {
           n._warned = { ...(n._warned || {}), [k]: true }
           logEvent(EVENT_TEMPLATES.critical(n.name, k))
-          notify(`${n.name} — ${k} is critical!`, 'warn')
+          // Throttle notify — only pop UI warning every 90 ticks per normie to avoid spam
+          if (!n._lastCritWarn || this.tickCount - n._lastCritWarn > 90) {
+            notify(`${n.name} — ${k} is critical!`, 'warn')
+            n._lastCritWarn = this.tickCount
+          }
           this.coins = Math.max(0, this.coins - COINS_CRITICAL_PENALTY)
         }
         if (n.needs[k] > 25 && n._warned?.[k]) {
@@ -555,7 +569,7 @@ export class App {
     for (const n of this.normies) this._observedActivities.add(n.activity)
     this.gameStats.uniqueActivitiesSeen = this._observedActivities.size
 
-    if (this.tickCount % 8 === 0) this._checkAchievements()
+    if (this.tickCount % 20 === 0) this._checkAchievements()
     updateStats(this.normies, this.coins, this.gameMinute, dormHappiness, this._incomePerMin())
     updateOccupancy(this.normies)
     this.nightAlpha = updateDayNight(this.gameMinute)
@@ -598,17 +612,17 @@ export class App {
   }
 
   _chatTick() {
-    if (Math.random() > 0.45) return
+    if (Math.random() > 0.22) return   // reduced from 0.45 — much less frequent chatter
     const eligible = this.normies.filter(n =>
       n.chatCooldown <= 0 &&
       ['chatting','outside','gaming','eating','walking','exercising','cooking','sketching'].includes(n.activity)
     )
     if (!eligible.length) return
-    const n     = eligible[Math.floor(Math.random() * eligible.length)]
+    const n      = eligible[Math.floor(Math.random() * eligible.length)]
     const isCrit = Object.values(n.needs).some(v => v < 12)
     const pool   = isCrit ? CHAT_LINES.critical : (CHAT_LINES[n.activity] || CHAT_LINES.chatting)
     showChatBubble(n.id, pool[Math.floor(Math.random() * pool.length)])
-    n.chatCooldown = 20 + Math.floor(Math.random() * 15)
+    n.chatCooldown = 40 + Math.floor(Math.random() * 30)   // longer cooldown between bubbles
   }
 
   _checkAchievements() {
@@ -642,6 +656,9 @@ export class App {
       earnedAchievements: this.earnedAchievements,
       gameStats: this.gameStats, gameMinute: this.gameMinute,
     })
+    // Submit score to leaderboard
+    const happiness = calcDormHappiness(this.normies)
+    submitScore({ address: this.address, coins: this.coins, normieCount: this.normies.length, happiness })
   }
 
   _stopAll() {

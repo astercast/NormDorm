@@ -3,6 +3,7 @@ import {
   ACTIVITY_META, UPGRADES, ACHIEVEMENTS, API_BASE,
   COINS_FEED_COST, COINS_ENERGY_DRINK_COST, COINS_STUDY_SESSION_COST, COINS_PARTY_COST,
 } from './constants.js'
+import { fetchLeaderboard, isGlobalEnabled, fmtCoins } from './leaderboard.js'
 
 // ── Theme ─────────────────────────────────────────────────────────────────────
 
@@ -561,4 +562,79 @@ export function updateLoadProgress(loaded, total) {
   const l = document.getElementById('load-label')
   if (f) f.style.width = `${Math.round((loaded/total)*100)}%`
   if (l) l.textContent = `${loaded} / ${total} normies loaded`
+}
+
+// ── Leaderboard ───────────────────────────────────────────────────────────────
+
+export async function renderLeaderboard(currentAddress, isDemo) {
+  const panel = document.getElementById('lb-panel')
+  if (!panel) return
+
+  const isGlobal = isGlobalEnabled()
+  const addr     = (currentAddress || '').toLowerCase()
+
+  panel.innerHTML = `<div class="lb-loading">Loading scores…</div>`
+
+  let entries = []
+  try { entries = await fetchLeaderboard() } catch {}
+
+  const myRank = entries.findIndex(e => e.address === addr)
+
+  panel.innerHTML = `
+    <div class="lb-wrap-inner">
+      <div class="lb-head">
+        <div>
+          <div class="lb-title">LEADERBOARD</div>
+          <div class="lb-mode">${isGlobal
+            ? '🌐 Global rankings — live data'
+            : '📱 Device rankings — <a href="https://supabase.com" target="_blank">connect Supabase</a> for global'
+          }</div>
+        </div>
+        <button class="btn btn-sm btn-ghost" id="lb-refresh-btn">↻ Refresh</button>
+      </div>
+
+      ${!isDemo && addr && myRank >= 0 ? `
+        <div class="lb-my-rank">
+          <span class="lb-rank-badge">#${myRank + 1}</span>
+          <span class="lb-rank-addr">Your ranking</span>
+          <span class="lb-rank-coins">🪙 ${fmtCoins(entries[myRank].coins)}</span>
+        </div>` : ''}
+
+      ${entries.length === 0
+        ? `<div class="lb-empty">No scores yet — play to appear here!</div>`
+        : `<div class="lb-list">
+            <div class="lb-row lb-row-header">
+              <div class="lb-col-rank">RANK</div>
+              <div class="lb-col-addr">ADDRESS</div>
+              <div class="lb-col-normies">NORMIES</div>
+              <div class="lb-col-hap">HAP</div>
+              <div class="lb-col-coins">COINS</div>
+            </div>
+            ${entries.slice(0, 50).map((e, i) => {
+              const isMe = e.address === addr
+              const rankIcon = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}`
+              return `
+                <div class="lb-row${isMe ? ' lb-row-me' : ''}">
+                  <div class="lb-col-rank">${rankIcon}</div>
+                  <div class="lb-col-addr" title="${e.address}">${e.address.slice(0,6)}…${e.address.slice(-4)}</div>
+                  <div class="lb-col-normies">${e.normie_count}</div>
+                  <div class="lb-col-hap">${Math.floor(e.happiness)}%</div>
+                  <div class="lb-col-coins">🪙 ${fmtCoins(e.coins)}</div>
+                </div>`
+            }).join('')}
+          </div>`
+      }
+
+      ${isGlobal ? '' : `
+        <div class="lb-setup-hint">
+          <strong>Enable global leaderboard:</strong> Create a free
+          <a href="https://supabase.com" target="_blank">Supabase</a> project,
+          add the table (SQL in <code>src/leaderboard.js</code>), then set
+          <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON</code> in <code>.env</code>.
+        </div>`}
+    </div>`
+
+  document.getElementById('lb-refresh-btn')?.addEventListener('click', () => {
+    renderLeaderboard(currentAddress, isDemo)
+  })
 }
