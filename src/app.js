@@ -8,6 +8,7 @@ import {
   COINS_FEED_COST, COINS_ENERGY_DRINK_COST, COINS_STUDY_SESSION_COST, COINS_PARTY_COST,
   COMBO_WINDOW_MS, COMBO_MAX,
   buildRoomList,
+  calcLevel, getXpForLevel, calcLevelBonus,
 } from './constants.js'
 import { checkAgenticBatch, fetchAgentPersona, getAgentChatLine } from './agentic.js'
 import {
@@ -370,6 +371,13 @@ export class App {
             </div>
             <div class="dorm-sidebar" id="dorm-sidebar">
               <button class="sb-close-btn" id="sb-close-btn" aria-label="Close panel">✕</button>
+              <div class="sb-section sb-level">
+                <div class="sb-title">LEVEL <span id="level-num" class="level-badge">1</span></div>
+                <div class="xp-bar-wrap">
+                  <div class="xp-bar"><div id="xp-fill" class="xp-fill"></div></div>
+                  <div class="xp-label"><span id="xp-current">0</span> / <span id="xp-next">800</span> XP</div>
+                </div>
+              </div>
               <div class="sb-section sb-happiness">
                 <div class="sb-title">HAPPINESS <span id="happiness-pct" class="happiness-pct">--%</span></div>
                 <div class="happiness-bar-wrap">
@@ -463,7 +471,8 @@ export class App {
     renderRoster(this.normies)
     renderShop(this.purchasedUpgrades, this.coins, id => this._buyUpgrade(id))
     renderAchievements(this.earnedAchievements)
-    updateStats(this.normies, this.coins, this.gameMinute, calcDormHappiness(this.normies), 0)
+    updateStats(this.normies, this.coins, this.gameMinute, calcDormHappiness(this.normies), 0,
+      calcLevel(this.gameStats.totalCoinsEarned), this.gameStats.totalCoinsEarned)
     renderLeaderboard(this.address, this.isDemo)
 
     const buildWrap = document.getElementById('dorm-building-wrap')
@@ -506,8 +515,9 @@ export class App {
     clearTimeout(this.comboTimeout)
     this.comboTimeout = setTimeout(() => { this.comboCount = 0; updateComboMeter(0, this._maxCombo()) }, COMBO_WINDOW_MS + 200)
 
-    const base = COINS_CLICK_BASE * (this.upgradeEffects.clickMult || 1)
-    const amt  = Math.ceil(base * this.comboCount * (1 + (normie.level || 1) * 0.15))
+    const lvlBonus = calcLevelBonus(calcLevel(this.gameStats.totalCoinsEarned))
+    const base = COINS_CLICK_BASE * (this.upgradeEffects.clickMult || 1) * lvlBonus.clickMult
+    const amt  = Math.ceil(base * this.comboCount)
     this.coins += amt
     this.gameStats.totalClicks++
     this.gameStats.totalCoinsEarned += amt
@@ -531,7 +541,10 @@ export class App {
     if (this.comboCount === this._maxCombo()) this._trackChallenge('maxComboHit', 1)
   }
 
-  _maxCombo() { return COMBO_MAX + (this.upgradeEffects.comboBonus || 0) }
+  _maxCombo() {
+    const lvlBonus = calcLevelBonus(calcLevel(this.gameStats.totalCoinsEarned))
+    return COMBO_MAX + (this.upgradeEffects.comboBonus || 0) + lvlBonus.comboBonus
+  }
 
   _onNormieAction(action, id) {
     const normie = this.normieMap.get(id); if (!normie) return
@@ -629,11 +642,22 @@ export class App {
     this.tickCount++
     this.gameMinute += GAME_MINS_PER_TICK
 
-    const mult    = this.upgradeEffects.passiveIncomeMult || 1
+    // Level bonuses scale passive + click income
+    const lvl      = calcLevel(this.gameStats.totalCoinsEarned)
+    const lvlBonus = calcLevelBonus(lvl)
+
+    const mult    = (this.upgradeEffects.passiveIncomeMult || 1) * lvlBonus.passiveMult
     const flat    = this.upgradeEffects.passiveIncomeFlat || 0
     const passive = this.normies.length * COINS_PER_TICK_BASE * mult + flat
     this.coins += passive
     this.gameStats.totalCoinsEarned += passive
+
+    // Level-up detection
+    if (lvl > (this._lastLevel || 1)) {
+      this._lastLevel = lvl
+      notify(`🎖️ Level ${lvl}! Income +${((lvlBonus.passiveMult - 1) * 100).toFixed(0)}%`, 'success', 5500)
+      logEvent(`Level ${lvl} reached!`)
+    }
 
     this._incomeHistory.push(passive)
     if (this._incomeHistory.length > 60) this._incomeHistory.shift()
@@ -648,13 +672,14 @@ export class App {
         this.coins += satAmt
         this.gameStats.totalCoinsEarned += satAmt
         this.gameStats.satisfiedCount++
+        // Track well-rested achievement: normie woke from sleep with 95+ energy
+        if (k === 'energy' && n.activity === 'sleeping') this.gameStats.wellRestedOnce = true
         logEvent(EVENT_TEMPLATES.satisfied(n.name, k))
       }
       for (const k of ALL_NEEDS) {
         if (n.needs[k] < 8 && !n._warned?.[k]) {
           n._warned = { ...(n._warned || {}), [k]: true }
           logEvent(EVENT_TEMPLATES.critical(n.name, k))
-          // Throttle notify — only pop UI warning every 90 ticks per normie to avoid spam
           if (!n._lastCritWarn || this.tickCount - n._lastCritWarn > 90) {
             notify(`${n.name} — ${k} is critical!`, 'warn')
             n._lastCritWarn = this.tickCount
@@ -670,6 +695,15 @@ export class App {
       if (this.tickCount % 5 === 0) updateRosterItem(n)
     }
 
+    // Sleep system stats
+    const sleepCount = this.normies.filter(n => n.activity === 'sleeping').length
+    this.gameStats.simultaneousSleepers = Math.max(this.gameStats.simultaneousSleepers || 0, sleepCount)
+    if (!this.gameStats.allSleptOnce) {
+      this._hasSlept = this._hasSlept || new Set()
+      this.normies.filter(n => n.activity === 'sleeping').forEach(n => this._hasSlept.add(n.id))
+      if (this._hasSlept.size >= this.normies.length) this.gameStats.allSleptOnce = true
+    }
+
     // Achievement stat tracking
     const dormHappiness = calcDormHappiness(this.normies)
     if (dormHappiness >= 90) this.gameStats.peakHappinessOnce = true
@@ -678,11 +712,9 @@ export class App {
     const gameHour = Math.floor((this.gameMinute / 60) % 24)
     if (gameHour >= 23 || gameHour === 0) this.gameStats.nightOwlOnce = true
 
-    // Track unique activity types observed this session
     for (const n of this.normies) this._observedActivities.add(n.activity)
     this.gameStats.uniqueActivitiesSeen = this._observedActivities.size
 
-    // Daily challenge checks (every 10 ticks)
     if (this.tickCount % 10 === 0) {
       const outsideCount = this.normies.filter(n => n.location === 'outdoor').length
       if (outsideCount >= 1) this._trackChallenge('outsideCount', outsideCount)
@@ -696,7 +728,7 @@ export class App {
     }
 
     if (this.tickCount % 20 === 0) this._checkAchievements()
-    updateStats(this.normies, this.coins, this.gameMinute, dormHappiness, this._incomePerMin())
+    updateStats(this.normies, this.coins, this.gameMinute, dormHappiness, this._incomePerMin(), lvl, this.gameStats.totalCoinsEarned)
     updateOccupancy(this.normies)
     this.nightAlpha = updateDayNight(this.gameMinute)
   }

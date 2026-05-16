@@ -2,6 +2,7 @@ import {
   ALL_NEEDS, NEED_DECAY, ACTIVITY_META, ARCHETYPES,
   UPGRADES, ACHIEVEMENTS,
   MAX_OFFLINE_MINS, TICK_MS, GAME_MINS_PER_TICK, COMBO_MAX,
+  calcLevel, getXpForLevel,
 } from './constants.js'
 
 // ── Needs ──────────────────────────────────────────────────────────────────
@@ -73,6 +74,16 @@ export function pickActivity(needs, personality, currentLocation, rooms) {
 
 function _roomWithActivity(activity, rooms, currentLocation) {
   if (!rooms || rooms.length === 0) return currentLocation
+
+  // sleeping is strictly bedroom-only — normies must go to bed, not sleep at desk
+  if (activity === 'sleeping') {
+    const bedrooms = rooms.filter(r => r.typeId === 'bedroom')
+    if (bedrooms.length > 0) return bedrooms[Math.floor(Math.random() * bedrooms.length)].id
+    // fallback if somehow no bedroom exists
+    const anywhere = rooms.filter(r => r.activities?.includes(activity))
+    return anywhere.length > 0 ? anywhere[Math.floor(Math.random() * anywhere.length)].id : currentLocation
+  }
+
   // Check if current room supports this activity
   const current = rooms.find(r => r.id === currentLocation)
   if (current?.activities?.includes(activity)) return currentLocation
@@ -213,13 +224,25 @@ export function checkAchievements(stats, earned) {
   check('combo_god',      stats.comboMaxHits           >= 5)
   check('coins_100000',   stats.totalCoinsEarned       >= 100000)
   check('peak_dorm',      stats.peakHappinessOnce)
-  check('all_activities', stats.uniqueActivitiesSeen   >= 12)
+  check('all_activities', stats.uniqueActivitiesSeen   >= 14)  // 14 with new acts
   check('max_upgrade',    stats.maxUpgradeEarned)
 
   // Legend
   check('click_2000',     stats.totalClicks            >= 2000)
   check('coins_500000',   stats.totalCoinsEarned       >= 500000)
   check('perfect_dorm',   stats.perfectDormOnce)
+
+  // Leveling
+  const currentLevel = calcLevel(stats.totalCoinsEarned)
+  check('level_5',        currentLevel >= 5)
+  check('level_10',       currentLevel >= 10)
+  check('level_20',       currentLevel >= 20)
+  check('level_50',       currentLevel >= 50)
+
+  // Sleep system
+  check('good_night',     stats.simultaneousSleepers   >= 3)
+  check('well_rested',    stats.wellRestedOnce)
+  check('sleep_master',   stats.allSleptOnce)
 
   return newOnes
 }

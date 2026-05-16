@@ -149,7 +149,7 @@ function _logLine(parent, msg) {
 
 // ── Stats ─────────────────────────────────────────────────────────────────────
 
-export function updateStats(normies, coins, gameMinute, dormHappiness, incomePerMin) {
+export function updateStats(normies, coins, gameMinute, dormHappiness, incomePerMin, level = 1, totalXP = 0) {
   const h  = Math.floor((gameMinute/60)%24)
   const m  = gameMinute % 60
   const h12 = ((h%12)||12).toString().padStart(2,'0')
@@ -175,15 +175,34 @@ export function updateStats(normies, coins, gameMinute, dormHappiness, incomePer
     _v('stat-income', `+${incomePerMin.toFixed(1)}/min`)
   }
 
+  // Level + XP bar
+  _v('level-num', `${level}`)
+  const xpFill = document.getElementById('xp-fill')
+  const xpCurr = document.getElementById('xp-current')
+  const xpNext = document.getElementById('xp-next')
+  if (xpFill || xpCurr) {
+    // Lazy import to avoid circular dep — getXpForLevel is a pure function
+    const xpThis = _getXpForLevel(level)
+    const xpNxt  = _getXpForLevel(level + 1)
+    const pct    = xpNxt > xpThis ? Math.min(100, ((totalXP - xpThis) / (xpNxt - xpThis)) * 100) : 100
+    if (xpFill) xpFill.style.width = `${pct.toFixed(1)}%`
+    if (xpCurr) xpCurr.textContent = _fmt(Math.floor(totalXP - xpThis))
+    if (xpNext) xpNext.textContent = _fmt(Math.floor(xpNxt - xpThis))
+  }
+
   // Mirror key stats to the mobile stat bar
-  if (dormHappiness !== undefined) {
-    _v('msb-happiness', `${dormHappiness}%`)
-  }
-  if (incomePerMin !== undefined) {
-    _v('msb-income', `+${incomePerMin.toFixed(1)}`)
-  }
+  if (dormHappiness !== undefined) _v('msb-happiness', `${dormHappiness}%`)
+  if (incomePerMin  !== undefined) _v('msb-income', `+${incomePerMin.toFixed(1)}`)
   _v('msb-outside', normies.filter(n => n.location === 'outdoor').length)
 }
+
+function _getXpForLevel(level) {
+  if (level <= 1) return 0
+  let total = 0
+  for (let l = 2; l <= level; l++) total += Math.floor(800 * Math.pow(1.72, l - 2))
+  return total
+}
+function _fmt(n) { return n >= 1000 ? (n/1000).toFixed(1)+'k' : String(n) }
 function _v(id,v) { const e=document.getElementById(id); if(e) e.textContent=v }
 
 // ── Roster ────────────────────────────────────────────────────────────────────
