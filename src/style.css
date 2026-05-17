@@ -660,14 +660,36 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
   font-family: var(--font-mono); font-weight: 500;
 }
 
-/* The canvas fills the entire card; must be white-bg rendered */
-.room-scene { position: relative; overflow: hidden; background: #FAFAF8 }
-.room-canvas {
-  display: block; width: 100%;
+/* Room: aspect on wrapper; canvases stack in pixel space */
+.room-scene {
+  position: relative;
+  overflow: hidden;
+  background: #FAFAF8;
+  width: 100%;
   aspect-ratio: 320 / 224;
+}
+.room-canvas {
+  display: block;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
 }
+.room-canvas-back,
+.room-canvas-front {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.room-canvas-back  { z-index: 1 }
+.room-sprite-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+}
+.room-sprite-layer .normie-sprite { pointer-events: auto }
+.room-canvas-front { z-index: 100 }
 
 /* ── THE QUAD (outdoor) ─────────────────────────────────────────────
    Clean exterior — white sky, soft ground, precise props.
@@ -876,6 +898,7 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
    ══════════════════════════════════════════════════════════════════ */
 .combo-meter {
   position: sticky; top: 0; z-index: 50;
+  pointer-events: none;
   background: var(--panel); border: 1px solid var(--border);
   border-radius: var(--radius-pill); padding: 8px 18px;
   margin-bottom: 14px; display: flex; align-items: center; gap: 12px;
@@ -1588,7 +1611,7 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
   .tab-btn { font-size: 11px; padding: 7px 10px; gap: 4px }
 
   /* Taller rooms on mobile so sprites are CLEARLY VISIBLE */
-  .room-canvas {
+  .room-scene {
     aspect-ratio: 320 / 200 !important;
   }
   .outdoor-scene { height: 180px !important }

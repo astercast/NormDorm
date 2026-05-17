@@ -488,7 +488,7 @@ export class App {
       placeSprite(normie, sceneEl)
     }
 
-    updateOccupancy(this.normies)
+    updateOccupancy(this.normies, this.rooms)
     this.nightAlpha = updateDayNight(this.gameMinute)
 
     logEvent('Welcome to NormDorm! Click your normies to earn coins.')
@@ -575,9 +575,9 @@ export class App {
     // Capacity check for indoor rooms
     if (targetRoomId !== 'outdoor') {
       const targetRoom = this.rooms.find(r => r.id === targetRoomId)
-      const occupants  = this.normies.filter(n => n.location === targetRoomId).length
+      const occupants  = this.normies.filter(n => n.location === targetRoomId && n.id !== normieId).length
       if (targetRoom && occupants >= targetRoom.maxOcc) {
-        notify(`${targetRoom.typeName || 'Room'} is full!`, 'warn', 2500)
+        notify(`${targetRoom.typeName || 'Room'} is full (${targetRoom.maxOcc}/${targetRoom.maxOcc})`, 'warn', 2500)
         return
       }
     }
@@ -586,7 +586,7 @@ export class App {
     normie.activity          = activity
     normie.activityTicksLeft = activityDuration(activity)
     setSpriteScene(normie, targetSceneEl)
-    updateOccupancy(this.normies)
+    updateOccupancy(this.normies, this.rooms)
     const roomName = targetRoomId === 'outdoor'
       ? 'the quad'
       : (this.rooms.find(r => r.id === targetRoomId)?.typeName || targetRoomId)
@@ -729,7 +729,7 @@ export class App {
 
     if (this.tickCount % 20 === 0) this._checkAchievements()
     updateStats(this.normies, this.coins, this.gameMinute, dormHappiness, this._incomePerMin(), lvl, this.gameStats.totalCoinsEarned)
-    updateOccupancy(this.normies)
+    updateOccupancy(this.normies, this.rooms)
     this.nightAlpha = updateDayNight(this.gameMinute)
   }
 
