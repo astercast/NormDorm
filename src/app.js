@@ -318,22 +318,22 @@ export class App {
         <div class="logo" id="logo-home">NORMDORM<span class="logo-sub">pixel dorm life</span></div>
         <div class="header-right">
           <div class="coin-pill" id="coin-display">
-            <span class="coin-icon">🪙</span>
+            <span class="coin-icon" aria-hidden="true">◎</span>
             <span id="stat-coins">0</span>
           </div>
           <div class="time-pill" id="stat-time">12:00 AM</div>
           <div class="addr-chip">${addrLabel}</div>
-          <button class="theme-toggle" id="theme-toggle">🌙</button>
-          <button class="btn btn-ghost btn-sm" id="btn-leave">✕</button>
+          <button class="theme-toggle mono-glyph" id="theme-toggle" title="Theme">◐</button>
+          <button class="btn btn-ghost btn-sm mono-glyph" id="btn-leave" title="Leave">×</button>
         </div>
       </div>
       ${this.isDemo ? '<div class="demo-banner">DEMO MODE — enter an address on the home screen to load your own Normies</div>' : ''}
 
       <div class="tab-bar">
-        <button class="tab-btn active" data-tab="dorm"><span class="tb-icon">🏠</span><span class="tb-label">DORM</span></button>
-        <button class="tab-btn" data-tab="shop"><span class="tb-icon">🛒</span><span class="tb-label">SHOP</span></button>
-        <button class="tab-btn" data-tab="achievements"><span class="tb-icon">🏆</span><span class="tb-label">CHALLENGES</span></button>
-        <button class="tab-btn" data-tab="leaderboard"><span class="tb-icon">🏅</span><span class="tb-label">BOARD</span></button>
+        <button class="tab-btn active" data-tab="dorm"><span class="tb-icon" aria-hidden="true">⌂</span><span class="tb-label">DORM</span></button>
+        <button class="tab-btn" data-tab="shop"><span class="tb-icon" aria-hidden="true">▤</span><span class="tb-label">SHOP</span></button>
+        <button class="tab-btn" data-tab="achievements"><span class="tb-icon" aria-hidden="true">◆</span><span class="tb-label">CHALLENGES</span></button>
+        <button class="tab-btn" data-tab="leaderboard"><span class="tb-icon" aria-hidden="true">≡</span><span class="tb-label">BOARD</span></button>
       </div>
 
       <div class="main-layout">
@@ -575,9 +575,9 @@ export class App {
     // Capacity check for indoor rooms
     if (targetRoomId !== 'outdoor') {
       const targetRoom = this.rooms.find(r => r.id === targetRoomId)
-      const occupants  = this.normies.filter(n => n.location === targetRoomId && n.id !== normieId).length
+      const occupants  = this.normies.filter(n => n.location === targetRoomId).length
       if (targetRoom && occupants >= targetRoom.maxOcc) {
-        notify(`${targetRoom.typeName || 'Room'} is full (${targetRoom.maxOcc}/${targetRoom.maxOcc})`, 'warn', 2500)
+        notify(`${targetRoom.typeName || 'Room'} is full!`, 'warn', 2500)
         return
       }
     }

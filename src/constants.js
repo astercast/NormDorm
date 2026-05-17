@@ -70,32 +70,29 @@ export const OUTDOOR_TYPE = {
   desc:'Fresh air. Stars at night.',
 }
 
-/** Max normies per indoor room; one new indoor room per full batch of 12. */
-export const ROOM_MAX_OCC = 12
-
 export function buildRoomList(normieCount) {
-  const n = Math.max(0, normieCount | 0)
-  // At least 3 indoor rooms for small demos; then grow without cap: ceil(n/12)
-  const totalIndoor = Math.max(3, Math.ceil(n / ROOM_MAX_OCC) || 1)
+  /** Each room holds up to 12 normies; add a new room every 12 normies (no hard cap on room count). */
+  const CAP = 12
+  const n = Math.max(normieCount, 1)
+  const totalRooms = Math.max(Math.ceil(n / CAP), 3)
   const rooms = []
 
-  // Bedroom is always room #100 — only place normies truly sleep
   rooms.push({
     id:'room-100', number:100, name:'ROOM 100',
     typeId:BEDROOM_TYPE.typeId, typeName:BEDROOM_TYPE.typeName,
     theme:BEDROOM_TYPE.theme, activities:[...BEDROOM_TYPE.activities],
-    maxOcc:ROOM_MAX_OCC, desc:BEDROOM_TYPE.desc,
+    maxOcc:CAP, desc:BEDROOM_TYPE.desc,
   })
 
   const regularTypes = ROOM_TYPES.filter(t => t.typeId !== 'bedroom')
-  for (let i = 0; i < totalIndoor - 1; i++) {
+  for (let i = 0; i < totalRooms - 1; i++) {
     const type = regularTypes[i % regularTypes.length]
     const num  = 101 + i
     rooms.push({
       id:`room-${num}`, number:num, name:`ROOM ${num}`,
       typeId:type.typeId, typeName:type.typeName,
       theme:type.theme, activities:[...type.activities],
-      maxOcc:ROOM_MAX_OCC, desc:type.desc,
+      maxOcc:CAP, desc:type.desc,
     })
   }
 

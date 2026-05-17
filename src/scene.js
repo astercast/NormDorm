@@ -378,8 +378,7 @@ export async function buildDorm(rooms) {
     const roomWrap = document.createElement('div')
     roomWrap.className = 'room-wrap'
     roomWrap.id = `roomwrap-${room.id}`
-    roomWrap.dataset.roomId = room.id
-
+    roomWrap.dataset.dropRoom = room.id
     const strip = document.createElement('div')
     strip.className = 'room-strip'
     strip.innerHTML = `
@@ -453,7 +452,7 @@ function _buildOutdoorDOM(room) {
   const wrap = document.createElement('div')
   wrap.className = 'room-wrap outdoor-wrap'
   wrap.id = `roomwrap-outdoor`
-  wrap.dataset.roomId = 'outdoor'
+  wrap.dataset.dropRoom = 'outdoor'
 
   const strip = document.createElement('div')
   strip.className = 'room-strip outdoor-strip'
@@ -553,82 +552,88 @@ function _mkOutLamp(xPct) {
   return l
 }
 
+function _roomIdFromPoint(x, y) {
+  const stack = document.elementsFromPoint(x, y)
+  for (const el of stack) {
+    const byData = el.closest?.('[data-drop-room]')
+    if (byData?.dataset?.dropRoom) return byData.dataset.dropRoom
+    const wrap = el.closest?.('[id^="roomwrap-"]')
+    if (wrap?.id?.startsWith('roomwrap-')) return wrap.id.slice(9)
+  }
+  return null
+}
+
 // ── Drag & Drop ───────────────────────────────────────────────────────────────
-// Uses Pointer Events so it works identically on mouse and touch.
-let _drag            = null   // active drag state
-let _lastDragId      = null   // normie id of the most recent completed drag
-let _dragBlockTimer  = null   //  → used to swallow the phantom click after a drag
+// Document-level pointer tracking so drops register over any room, not only the sprite canvas.
+let _drag            = null
+let _lastDragId      = null
+let _dragBlockTimer  = null
 
 function _startDrag(normie, srcCvs, e) {
   if (_drag) return
+  if (e.pointerType === 'mouse' && e.button !== 0) return
+  const pointerId = e.pointerId
   const ghost = document.createElement('canvas')
   ghost.width  = srcCvs.width
   ghost.height = srcCvs.height
   ghost.style.cssText =
-    'position:fixed;pointer-events:none;image-rendering:pixelated;z-index:9999;' +
-    'opacity:0.88;transform:translate(-50%,-90%) scale(1.12);' +
-    'filter:drop-shadow(0 8px 20px rgba(0,0,0,0.5));transition:none'
+    'position:fixed;pointer-events:none;image-rendering:pixelated;z-index:10000;' +
+    'opacity:0.9;transform:translate(-50%,-90%) scale(1.12);' +
+    'filter:drop-shadow(0 8px 24px rgba(0,0,0,0.45));transition:none;touch-action:none'
   ghost.getContext('2d').drawImage(srcCvs, 0, 0)
   document.body.appendChild(ghost)
   ghost.style.left = e.clientX + 'px'
   ghost.style.top  = e.clientY + 'px'
-  srcCvs.style.opacity = '0.22'
+  srcCvs.style.opacity = '0.2'
   document.body.style.userSelect = 'none'
   document.body.style.webkitUserSelect = 'none'
-  _drag = {
-    normieId: normie.id, srcCvs, ghost,
-    startX: e.clientX, startY: e.clientY, moved: false,
-    pointerId: e.pointerId,
-  }
-  try { srcCvs.setPointerCapture(e.pointerId) } catch { /* ignore */ }
-}
 
-function _roomIdAtPoint(clientX, clientY) {
-  const stack = document.elementsFromPoint(clientX, clientY)
-  for (const el of stack) {
-    let node = el
-    while (node && node !== document.documentElement) {
-      if (node.dataset?.roomId) return node.dataset.roomId
-      if (node.id?.startsWith('roomwrap-')) return node.id.slice(9)
-      node = node.parentElement
-    }
+  const onMove = (ev) => { if (_drag) _updateDrag(ev) }
+  const onUp = (ev) => {
+    document.removeEventListener('pointermove', onMove)
+    document.removeEventListener('pointerup', onUp, true)
+    document.removeEventListener('pointercancel', onUp, true)
+    if (_drag && _drag.normieId === normie.id) _endDrag(ev)
   }
-  return null
+  document.addEventListener('pointermove', onMove)
+  document.addEventListener('pointerup', onUp, true)
+  document.addEventListener('pointercancel', onUp, true)
+
+  _drag = { normieId: normie.id, srcCvs, ghost, pointerId, startX: e.clientX, startY: e.clientY, moved: false }
+  try { srcCvs.setPointerCapture(pointerId) } catch { /* touch / some browsers */ }
 }
 
 function _updateDrag(e) {
   if (!_drag) return
   _drag.ghost.style.left = e.clientX + 'px'
   _drag.ghost.style.top  = e.clientY + 'px'
-  if (!_drag.moved) {
-    if (Math.hypot(e.clientX - _drag.startX, e.clientY - _drag.startY) > 6) _drag.moved = true
-  }
+  if (!_drag.moved && Math.hypot(e.clientX - _drag.startX, e.clientY - _drag.startY) > 8) _drag.moved = true
   if (!_drag.moved) return
-  _drag.ghost.style.visibility = 'hidden'
-  const over = _roomIdAtPoint(e.clientX, e.clientY)
-  _drag.ghost.style.visibility = ''
+  _drag.ghost.style.display = 'none'
+  const over = _roomIdFromPoint(e.clientX, e.clientY)
+  _drag.ghost.style.display = ''
   document.querySelectorAll('.room-drop-active').forEach(el => el.classList.remove('room-drop-active'))
-  if (over !== null) document.getElementById('roomwrap-' + over)?.classList.add('room-drop-active')
+  if (over != null) document.getElementById('roomwrap-' + over)?.classList.add('room-drop-active')
 }
 
 function _endDrag(e) {
   if (!_drag) return
   const { normieId, srcCvs, ghost, moved, pointerId } = _drag
   _drag = null
-  try { if (pointerId != null) srcCvs.releasePointerCapture(pointerId) } catch { /* ignore */ }
-  const cx = e.clientX
-  const cy = e.clientY
+  try { srcCvs.releasePointerCapture(pointerId) } catch { /* ignore */ }
+
+  let roomId = null
   ghost.remove()
   srcCvs.style.opacity = ''
   document.body.style.userSelect = ''
   document.body.style.webkitUserSelect = ''
   document.querySelectorAll('.room-drop-active').forEach(el => el.classList.remove('room-drop-active'))
+  if (moved) roomId = _roomIdFromPoint(e.clientX, e.clientY)
   if (!moved) return
-  const roomId = _roomIdAtPoint(cx, cy)
-  if (roomId !== null) {
+  if (roomId != null) {
     _lastDragId = normieId
     clearTimeout(_dragBlockTimer)
-    _dragBlockTimer = setTimeout(() => { _lastDragId = null }, 80)
+    _dragBlockTimer = setTimeout(() => { _lastDragId = null }, 100)
     document.dispatchEvent(new CustomEvent('normie-drop', { detail: { id: normieId, roomId } }))
   }
 }
@@ -694,9 +699,6 @@ export function placeSprite(normie, sceneEl) {
     if (e.pointerType === 'mouse' && e.button !== 0) return
     _startDrag(normie, cvs, e)
   })
-  cvs.addEventListener('pointermove',   e => { if (_drag?.normieId === normie.id) _updateDrag(e) })
-  cvs.addEventListener('pointerup',     e => { if (_drag?.normieId === normie.id) _endDrag(e) })
-  cvs.addEventListener('pointercancel', e => { if (_drag?.normieId === normie.id) _endDrag(e) })
   cvs.addEventListener('click', e => {
     if (_lastDragId === normie.id) return  // swallow phantom click after drag
     e.stopPropagation()
@@ -921,20 +923,16 @@ export function updateDayNight(gameMinute) {
 }
 
 export function updateOccupancy(normies, rooms = []) {
-  const maxBy = Object.fromEntries(rooms.map(r => [r.id, r.maxOcc ?? 12]))
+  const maxByLoc = Object.fromEntries((rooms || []).map(r => [r.id, r.maxOcc]))
   const counts = {}
   for (const n of normies) counts[n.location] = (counts[n.location] || 0) + 1
-  for (const [loc, count] of Object.entries(counts)) {
-    const el = document.getElementById(`occ-${loc}`)
-    if (!el) continue
-    const cap = maxBy[loc]
-    el.textContent = loc === 'outdoor' ? `${count} in quad` : `${count}/${cap ?? '—'}`
-  }
   document.querySelectorAll('[id^="occ-"]').forEach(el => {
     const loc = el.id.replace('occ-', '')
-    if (!counts[loc]) {
-      const cap = maxBy[loc]
-      el.textContent = loc === 'outdoor' ? '0 in quad' : `0/${cap ?? '—'}`
+    const count = counts[loc] || 0
+    if (loc === 'outdoor') el.textContent = `${count} in quad`
+    else {
+      const max = maxByLoc[loc] ?? 12
+      el.textContent = `${count}/${max}`
     }
   })
 }
