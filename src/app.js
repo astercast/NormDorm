@@ -315,25 +315,46 @@ export class App {
 
     this.root.innerHTML = `
       <div class="header">
-        <div class="logo" id="logo-home">NORMDORM<span class="logo-sub">pixel dorm life</span></div>
+        <div class="logo" id="logo-home">
+          <span class="logo-mark">ND</span>
+          <span class="logo-name">NORMDORM</span>
+          <span class="logo-sub">pixel dorm sim</span>
+        </div>
         <div class="header-right">
-          <div class="coin-pill" id="coin-display">
-            <span class="coin-icon" aria-hidden="true">◎</span>
+          <div class="streak-chip" id="streak-chip" title="Daily login streak">
+            <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
+              <path d="M8 1.5c1 2.2.5 3.5-.5 4.5C6 7.5 4.5 8.5 4.5 11A3.5 3.5 0 0 0 8 14.5a3.5 3.5 0 0 0 3.5-3.5c0-1.7-.8-2.6-1.8-3.5C9 7 9 5.5 9.5 4 8.5 4.5 8 3 8 1.5Z" fill="currentColor"/>
+            </svg>
+            <span id="streak-num">0</span>
+          </div>
+          <div class="coin-pill" id="coin-display" title="Coins">
+            <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
+              <circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.4"/>
+              <circle cx="8" cy="8" r="3.4" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            </svg>
             <span id="stat-coins">0</span>
           </div>
           <div class="time-pill" id="stat-time">12:00 AM</div>
           <div class="addr-chip">${addrLabel}</div>
-          <button class="theme-toggle mono-glyph" id="theme-toggle" title="Theme">◐</button>
-          <button class="btn btn-ghost btn-sm mono-glyph" id="btn-leave" title="Leave">×</button>
+          <button class="icon-btn" id="theme-toggle" title="Theme" aria-label="Toggle theme">
+            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+              <path d="M8 1a7 7 0 1 0 7 7 5.5 5.5 0 0 1-7-7Z" fill="currentColor"/>
+            </svg>
+          </button>
+          <button class="icon-btn" id="btn-leave" title="Leave" aria-label="Leave">
+            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+              <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+            </svg>
+          </button>
         </div>
       </div>
       ${this.isDemo ? '<div class="demo-banner">DEMO MODE — enter an address on the home screen to load your own Normies</div>' : ''}
 
       <div class="tab-bar">
-        <button class="tab-btn active" data-tab="dorm"><span class="tb-icon" aria-hidden="true">⌂</span><span class="tb-label">DORM</span></button>
-        <button class="tab-btn" data-tab="shop"><span class="tb-icon" aria-hidden="true">▤</span><span class="tb-label">SHOP</span></button>
-        <button class="tab-btn" data-tab="achievements"><span class="tb-icon" aria-hidden="true">◆</span><span class="tb-label">CHALLENGES</span></button>
-        <button class="tab-btn" data-tab="leaderboard"><span class="tb-icon" aria-hidden="true">≡</span><span class="tb-label">BOARD</span></button>
+        <button class="tab-btn active" data-tab="dorm">DORM</button>
+        <button class="tab-btn" data-tab="shop">SHOP</button>
+        <button class="tab-btn" data-tab="achievements">CHALLENGES</button>
+        <button class="tab-btn" data-tab="leaderboard">LEADERBOARD</button>
       </div>
 
       <div class="main-layout">
@@ -370,43 +391,61 @@ export class App {
               <div id="dorm-building-wrap"></div>
             </div>
             <div class="dorm-sidebar" id="dorm-sidebar">
-              <button class="sb-close-btn" id="sb-close-btn" aria-label="Close panel">✕</button>
-              <div class="sb-section sb-level">
-                <div class="sb-title">LEVEL <span id="level-num" class="level-badge">1</span></div>
-                <div class="xp-bar-wrap">
-                  <div class="xp-bar"><div id="xp-fill" class="xp-fill"></div></div>
-                  <div class="xp-label"><span id="xp-current">0</span> / <span id="xp-next">800</span> XP</div>
+              <button class="sb-close-btn" id="sb-close-btn" aria-label="Close panel">
+                <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+              </button>
+
+              <div class="sb-card sb-progress">
+                <div class="sb-progress-top">
+                  <span class="sb-level-badge" id="level-num">1</span>
+                  <div class="sb-progress-meta">
+                    <div class="sb-progress-label">LEVEL</div>
+                    <div class="sb-progress-xp"><span id="xp-current">0</span> / <span id="xp-next">800</span> XP</div>
+                  </div>
                 </div>
+                <div class="xp-bar"><div id="xp-fill" class="xp-fill"></div></div>
               </div>
-              <div class="sb-section sb-happiness">
-                <div class="sb-title">HAPPINESS <span id="happiness-pct" class="happiness-pct">--%</span></div>
-                <div class="happiness-bar-wrap">
+
+              <div class="sb-card sb-vitals">
+                <div class="sb-vital">
+                  <div class="sb-vital-lbl">HAPPINESS</div>
+                  <div class="sb-vital-val" id="happiness-pct">--%</div>
                   <div class="happiness-bar"><div id="happiness-fill" class="happiness-fill"></div></div>
                 </div>
-                <div class="income-row">
-                  <span class="income-label">Income</span>
-                  <span id="stat-income" class="income-val">—</span>
+                <div class="sb-vital">
+                  <div class="sb-vital-lbl">INCOME</div>
+                  <div class="sb-vital-val sb-vital-val-mono" id="stat-income">—</div>
+                  <div class="sb-vital-sub">per minute</div>
                 </div>
               </div>
-              <div class="sb-section">
-                <div class="sb-title">STATS</div>
-                <div class="stats-grid">
-                  <div class="stat-block"><div class="stat-val" id="stat-outside">0</div><div class="stat-lbl">OUTSIDE</div></div>
-                  <div class="stat-block"><div class="stat-val" id="stat-sleeping">0</div><div class="stat-lbl">SLEEPING</div></div>
-                  <div class="stat-block"><div class="stat-val" id="stat-gaming">0</div><div class="stat-lbl">GAMING</div></div>
-                  <div class="stat-block"><div class="stat-val" id="stat-happy">0</div><div class="stat-lbl">HAPPY</div></div>
+
+              <div class="sb-card sb-milestone" id="sb-milestone">
+                <div class="sb-card-title">NEXT MILESTONE</div>
+                <div class="sb-milestone-row">
+                  <span class="sb-milestone-name" id="milestone-name">—</span>
+                  <span class="sb-milestone-reward" id="milestone-reward"></span>
                 </div>
+                <div class="milestone-bar"><div id="milestone-fill" class="milestone-fill"></div></div>
+                <div class="sb-milestone-progress" id="milestone-progress">—</div>
               </div>
-              <div class="sb-section sb-click-hint">
-                <div class="hint-text">👆 Click normies for coins!</div>
-                <div class="hint-sub">Build a combo for ×${COMBO_MAX} multiplier</div>
+
+              <div class="sb-card sb-quickstats">
+                <div class="sb-stat"><span class="sb-stat-val" id="stat-outside">0</span><span class="sb-stat-lbl">QUAD</span></div>
+                <div class="sb-stat"><span class="sb-stat-val" id="stat-sleeping">0</span><span class="sb-stat-lbl">SLEEP</span></div>
+                <div class="sb-stat"><span class="sb-stat-val" id="stat-gaming">0</span><span class="sb-stat-lbl">PLAY</span></div>
+                <div class="sb-stat"><span class="sb-stat-val" id="stat-happy">0</span><span class="sb-stat-lbl">THRIVE</span></div>
               </div>
-              <div class="sb-section">
-                <div class="sb-title">RESIDENTS <span class="sb-count">${this.normies.length}</span></div>
+
+              <div class="sb-card sb-roster-card">
+                <div class="sb-card-title">
+                  <span>RESIDENTS</span>
+                  <span class="sb-card-count">${this.normies.length}</span>
+                </div>
                 <div class="roster" id="roster"></div>
               </div>
-              <div class="sb-section sb-log">
-                <div class="sb-title">LOG</div>
+
+              <div class="sb-card sb-log-card">
+                <div class="sb-card-title">ACTIVITY</div>
                 <div class="event-log" id="event-log"><div id="log-inner"></div></div>
               </div>
             </div>
@@ -490,6 +529,7 @@ export class App {
 
     updateOccupancy(this.normies, this.rooms)
     this.nightAlpha = updateDayNight(this.gameMinute)
+    this._updateMilestone()
 
     logEvent('Welcome to NormDorm! Click your normies to earn coins.')
   }
@@ -731,6 +771,7 @@ export class App {
     updateStats(this.normies, this.coins, this.gameMinute, dormHappiness, this._incomePerMin(), lvl, this.gameStats.totalCoinsEarned)
     updateOccupancy(this.normies, this.rooms)
     this.nightAlpha = updateDayNight(this.gameMinute)
+    if (this.tickCount % 4 === 0) this._updateMilestone()
   }
 
   _incomePerMin() {
@@ -869,6 +910,7 @@ export class App {
       this._daily           = stored
       this._challengeProgress = stored.challengeProgress || {}
       renderChallenges(stored.challenges || [], this._challengeProgress)
+      this._updateStreakChip(stored.streak || 1)
       return
     }
 
@@ -912,10 +954,55 @@ export class App {
     }
 
     renderChallenges(challenges, {})
+    this._updateStreakChip(streak)
     setTimeout(() => {
       stored.lastLoginTs = Date.now()
       localStorage.setItem(key, JSON.stringify({ ...daily, lastLoginTs: Date.now() }))
     }, 0)
+  }
+
+  _updateStreakChip(streak) {
+    const el = document.getElementById('streak-num')
+    if (el) el.textContent = String(streak)
+    const chip = document.getElementById('streak-chip')
+    if (chip) chip.dataset.streak = streak >= 30 ? 'gold' : streak >= 7 ? 'hot' : 'warm'
+  }
+
+  _updateMilestone() {
+    const name     = document.getElementById('milestone-name')
+    const reward   = document.getElementById('milestone-reward')
+    const fill     = document.getElementById('milestone-fill')
+    const progress = document.getElementById('milestone-progress')
+    if (!name) return
+    const remaining = ACHIEVEMENTS.filter(a => !this.earnedAchievements.includes(a.id))
+    if (!remaining.length) {
+      name.textContent = 'All achievements unlocked'
+      if (reward)   reward.textContent = ''
+      if (fill)     fill.style.width = '100%'
+      if (progress) progress.textContent = 'Legendary'
+      return
+    }
+    // Pick the closest milestone using rough heuristic on achievement id thresholds
+    const lvl     = calcLevel(this.gameStats.totalCoinsEarned)
+    const clicks  = this.gameStats.totalClicks || 0
+    const coins   = this.gameStats.totalCoinsEarned || 0
+    const targets = remaining.map(a => {
+      let cur = 0, max = 1
+      if (a.id.startsWith('coins_'))   { max = parseInt(a.id.slice(6)); cur = coins }
+      else if (a.id.startsWith('click_')) { max = parseInt(a.id.slice(6)); cur = clicks }
+      else if (a.id.startsWith('level_')) { max = parseInt(a.id.slice(6)); cur = lvl }
+      else return null
+      return { a, cur, max, pct: Math.min(1, cur / max) }
+    }).filter(Boolean).filter(t => t.pct < 1)
+    targets.sort((a, b) => b.pct - a.pct)
+    const next = targets[0] || { a: remaining[0], cur: 0, max: 1, pct: 0 }
+    name.textContent = next.a.name
+    if (reward)   reward.textContent = next.a.reward ? `+${next.a.reward}` : ''
+    if (fill)     fill.style.width = `${(next.pct * 100).toFixed(1)}%`
+    if (progress) {
+      const fmt = n => n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(Math.floor(n))
+      progress.textContent = `${fmt(next.cur)} / ${fmt(next.max)}`
+    }
   }
 
   _trackChallenge(type, amount = 1) {
