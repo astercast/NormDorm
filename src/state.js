@@ -1,4 +1,4 @@
-import {
+﻿import {
   ALL_NEEDS, NEED_DECAY, ACTIVITY_META, ARCHETYPES,
   UPGRADES, ACHIEVEMENTS,
   MAX_OFFLINE_MINS, TICK_MS, GAME_MINS_PER_TICK, COMBO_MAX,
@@ -63,7 +63,7 @@ export function pickActivity(needs, personality, currentLocation, rooms) {
     }
     // Slight preference for current room's activities
     if (availableActivities?.includes(act)) score += 5
-    // No outdoor bias — normies should start and stay in rooms naturally
+    // No outdoor bias - normies should start and stay in rooms naturally
     candidates.push({ activity:act, location:targetLoc, score: score * (0.7 + Math.random() * 0.6) })
   }
 
@@ -75,7 +75,7 @@ export function pickActivity(needs, personality, currentLocation, rooms) {
 function _roomWithActivity(activity, rooms, currentLocation) {
   if (!rooms || rooms.length === 0) return currentLocation
 
-  // sleeping is strictly bedroom-only — normies must go to bed, not sleep at desk
+  // sleeping is strictly bedroom-only - normies must go to bed, not sleep at desk
   if (activity === 'sleeping') {
     const bedrooms = rooms.filter(r => r.typeId === 'bedroom')
     if (bedrooms.length > 0) return bedrooms[Math.floor(Math.random() * bedrooms.length)].id
@@ -145,7 +145,7 @@ export function applyOfflineCatchup(saved) {
   const ticks = Math.floor(elapsed * 60 / (TICK_MS / 1000))
 
   if (ticks > 0 && saved.normies?.length) {
-    // Apply need decay (no activity fills — normies went idle)
+    // Apply need decay (no activity fills - normies went idle)
     for (const n of saved.normies) {
       for (const need of ALL_NEEDS) {
         n.needs[need] = clamp((n.needs[need] ?? 50) - NEED_DECAY[need] * ticks * 0.4)

@@ -1,7 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+﻿@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
 
 /* ══════════════════════════════════════════════════════════════════
-   NORMDORM — PREMIUM MINIMAL GAME DESIGN SYSTEM
+   NORMDORM - PREMIUM MINIMAL GAME DESIGN SYSTEM
    ══════════════════════════════════════════════════════════════════ */
 
 :root {
@@ -272,7 +272,7 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
 .dorm-main { overflow-y: auto; padding: 16px; background: var(--bg); position: relative }
 
 /* ══════════════════════════════════════════════════════════════════
-   HOMEPAGE — modern, minimal, editorial
+   HOMEPAGE - modern, minimal, editorial
    ══════════════════════════════════════════════════════════════════ */
 .connect-page {
   flex: 1;
@@ -281,7 +281,7 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
   background: var(--bg);
 }
 
-/* Nav — tiny, sparse, present-without-being-loud */
+/* Nav - tiny, sparse, present-without-being-loud */
 .hp-nav {
   display: flex; align-items: center; justify-content: space-between;
   padding: 28px max(36px, 5vw);
@@ -299,7 +299,7 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
   text-transform: uppercase;
 }
 
-/* Hero — split: copy on left, room scene on right */
+/* Hero - split: copy on left, room scene on right */
 .hp-hero {
   flex: 1;
   display: grid;
@@ -329,7 +329,7 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
   max-width: 460px;
 }
 
-/* Lookup row — refined input + button */
+/* Lookup row - refined input + button */
 .hp-lookup {
   display: flex; gap: 8px;
   margin-bottom: 16px;
@@ -445,7 +445,7 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
   border-top-color: rgba(255,255,255,.06);
 }
 
-/* Window — subtle, central */
+/* Window - subtle, central */
 .hp-window {
   position: absolute; top: 9%; left: 50%; transform: translateX(-50%);
   width: 30%; height: 30%;
@@ -538,7 +538,7 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
 }
 [data-theme="dark"] .hp-bed::before { background: #aaaaaa }
 
-/* Normies — real SVG portraits */
+/* Normies - real SVG portraits */
 .hp-normies {
   position: absolute; inset: 0;
   z-index: 5;
@@ -613,7 +613,7 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
 .hp-link:hover { color: var(--text) }
 .hp-sep { opacity: 0.5 }
 
-/* Responsive — stack on mobile */
+/* Responsive - stack on mobile */
 @media (max-width: 920px) {
   .hp-hero {
     grid-template-columns: 1fr;
@@ -633,7 +633,7 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
   .hp-room { height: 200px }
 }
 
-/* Legacy support — for the loading screen */
+/* Legacy support - for the loading screen */
 .connect-screen { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; gap: 20px; text-align: center }
 .connect-title  { font-size: 28px; font-weight: 700; letter-spacing: 3px }
 .connect-sub    { font-size: 15px; color: var(--text2); line-height: 1.7; max-width: 440px }
@@ -652,7 +652,7 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
 @keyframes loadBounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
 
 /* ══════════════════════════════════════════════════════════════════
-   DORM BUILDING — white rooms, crisp cards, large sprites
+   DORM BUILDING - white rooms, crisp cards, large sprites
    ══════════════════════════════════════════════════════════════════ */
 
 .dorm-building { display: flex; flex-direction: column; gap: 14px }
@@ -663,7 +663,7 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
   gap: 10px;
 }
 
-/* Each room card — pure white, thin dark border, NO background so canvas shows */
+/* Each room card - pure white, thin dark border, NO background so canvas shows */
 .room-wrap {
   position: relative;
   background: #FAFAF8;
@@ -679,7 +679,7 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
   transform: translateY(-1px);
 }
 
-/* Room header strip — minimal, barely-there */
+/* Room header strip - minimal, barely-there */
 .room-strip {
   display: flex; align-items: center; gap: 6px;
   padding: 4px 10px;
@@ -732,7 +732,7 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
 .room-canvas-front { z-index: 100 }
 
 /* ── THE QUAD (outdoor) ─────────────────────────────────────────────
-   Clean exterior — white sky, soft ground, precise props.
+   Clean exterior - white sky, soft ground, precise props.
    ──────────────────────────────────────────────────────────────────── */
 .outdoor-wrap {
   background: var(--panel);
@@ -753,7 +753,7 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
   isolation: isolate;
 }
 
-/* Sky — premium gradient that reads as light, dusk, or deep night */
+/* Sky - premium gradient that reads as light, dusk, or deep night */
 .out-sky {
   position: absolute; inset: 0;
   background: linear-gradient(180deg, #D8DCE2 0%, #E2E4E0 45%, #ECE9E2 92%);
@@ -766,7 +766,7 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
   background: linear-gradient(180deg, #06070C 0%, #0B0E18 55%, #141824 100%);
 }
 
-/* Sun — warm off-white circle */
+/* Sun - warm off-white circle */
 .out-sun {
   position: absolute; right: 8%; top: 18px;
   width: 20px; height: 20px; border-radius: 50%;
@@ -774,7 +774,7 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
   box-shadow: 0 0 32px 8px rgba(240,235,224,.3);
   transition: opacity 1.5s ease;
 }
-/* Moon — cool with a crater shadow */
+/* Moon - cool with a crater shadow */
 .out-moon {
   position: absolute; right: 8%; top: 20px;
   width: 16px; height: 16px; border-radius: 50%;
@@ -794,7 +794,7 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
 .out-sky[data-time="night"] .out-star { opacity: .8 }
 .out-sky[data-time="dusk"]  .out-star { opacity: .15 }
 
-/* Distant city silhouette — deepest depth */
+/* Distant city silhouette - deepest depth */
 .out-skyline {
   position: absolute; left: 0; right: 0; bottom: 78px;
   display: flex; align-items: flex-end; gap: 2px;
@@ -810,7 +810,7 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
 .out-sky[data-time="night"] ~ * .out-skyline-bldg,
 .out-sky[data-time="night"] .out-skyline-bldg { background: #5C6478; opacity: .8 }
 
-/* Mid-distance tree line — softer */
+/* Mid-distance tree line - softer */
 .out-treeline {
   position: absolute; left: 0; right: 0; bottom: 76px;
   display: flex; align-items: flex-end; gap: 1px;
@@ -823,7 +823,7 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
   background: radial-gradient(ellipse at top, #2A2820 60%, transparent 62%);
 }
 
-/* Ground — soft gradient + visible texture */
+/* Ground - soft gradient + visible texture */
 .out-ground {
   position: absolute; bottom: 0; left: 0; right: 0; height: 78px;
   background: linear-gradient(180deg, #DCD8CE 0%, #C8C2B4 100%);
@@ -833,7 +833,7 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
   background: linear-gradient(180deg, #1A1C24 0%, #0E1018 100%);
 }
 
-/* Ground path — central winding path */
+/* Ground path - central winding path */
 .out-ground::before {
   content: '';
   position: absolute;
@@ -860,14 +860,14 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
   pointer-events: none;
 }
 
-/* Props (trees, benches, lamps) — behind sprites */
+/* Props (trees, benches, lamps) - behind sprites */
 .out-props {
   position: absolute; inset: 0;
   pointer-events: none;
   z-index: 2;
 }
 
-/* Sprite container — above props, normies always read on top */
+/* Sprite container - above props, normies always read on top */
 .out-objects {
   position: absolute; inset: 0;
   pointer-events: none;
@@ -875,7 +875,7 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
 }
 .out-objects > * { pointer-events: auto }
 
-/* Trees — clean geometric silhouettes */
+/* Trees - clean geometric silhouettes */
 .out-tree {
   position: absolute; bottom: 78px;
   transform: translateX(-50%);
@@ -894,7 +894,7 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
 .ot-pine .pine-l3 { width: 22px; height: 15px; background: #1E1C14; clip-path: polygon(50% 0,0 100%,100% 100%); margin-top: -4px }
 .ot-pine .pine-trunk { width: 4px; height: 9px; background: #1A1816; margin-top: 0 }
 
-/* Beefier outdoor tree silhouettes — readable across the wider canvas */
+/* Beefier outdoor tree silhouettes - readable across the wider canvas */
 .ot-oak  .oak-canopy { width: 46px; height: 46px }
 .ot-oak  .oak-trunk  { width: 7px; height: 14px }
 .ot-pine .pine-l1    { border-left-width: 12px; border-right-width: 12px; border-bottom-width: 18px }
@@ -911,7 +911,7 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
   box-shadow: 0 0 16px 4px rgba(244,237,222,.55), 0 -6px 20px 4px rgba(244,237,222,.2);
 }
 
-/* Bench — thin and precise */
+/* Bench - thin and precise */
 .out-bench {
   position: absolute; bottom: 78px;
   transform: translateX(-50%);
@@ -937,14 +937,14 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
 .ol-pole { width: 3px; height: 56px; background: #2A2820 }
 
 /* ══════════════════════════════════════════════════════════════════
-   NORMIE SPRITES — white outline + shadow so they pop off white walls
+   NORMIE SPRITES - white outline + shadow so they pop off white walls
    ══════════════════════════════════════════════════════════════════ */
 .normie-sprite {
   image-rendering: pixelated; image-rendering: crisp-edges;
   cursor: grab;
   background: transparent !important;
   border: none; outline: none; box-shadow: none;
-  /* Faint white halo outline + depth shadow — works on any background */
+  /* Faint white halo outline + depth shadow - works on any background */
   filter:
     drop-shadow(0 0 2px rgba(255,255,255,0.90))
     drop-shadow(0 0 4px rgba(255,255,255,0.55))
@@ -979,7 +979,7 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   COMBO METER — the heart of the game
+   COMBO METER - the heart of the game
    ══════════════════════════════════════════════════════════════════ */
 .combo-meter {
   position: sticky; top: 0; z-index: 50;
@@ -996,22 +996,22 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
   transform: scale(1.01);
 }
 
-/* Level 1: ×2 — subtle warmth */
+/* Level 1: ×2 - subtle warmth */
 .combo-meter.combo-lvl1 {
   border-color: var(--border3);
 }
-/* Level 2: ×3–4 — warm */
+/* Level 2: ×3–4 - warm */
 .combo-meter.combo-lvl2 {
   border-color: var(--amber);
   background: var(--bg2);
 }
-/* Level 3: ×5–7 — hot */
+/* Level 3: ×5–7 - hot */
 .combo-meter.combo-lvl3 {
   border-color: var(--gold);
   background: var(--gold-soft);
   box-shadow: 0 0 0 2px var(--gold-glow), var(--sh-md);
 }
-/* Level 4: ×8+ — MAX POWER */
+/* Level 4: ×8+ - MAX POWER */
 .combo-meter.combo-lvl4 {
   border-color: var(--gold-hi);
   background: var(--gold-soft);
@@ -1075,7 +1075,7 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
 @keyframes bubIn  { from{opacity:0;transform:translate(-50%,-100%) scale(.7)} to{opacity:1;transform:translate(-50%,-100%) scale(1)} }
 @keyframes bubOut { to{opacity:0;transform:translate(-50%,calc(-100% - 10px)) scale(.95)} }
 
-/* Coin pop — satisfying and big */
+/* Coin pop - satisfying and big */
 .coin-pop {
   position: absolute; pointer-events: none; z-index: 100;
   font-family: var(--font-mono); font-size: 16px; font-weight: 800;
@@ -1311,7 +1311,7 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
 .ach-desc  { font-size: 11px; color: var(--text3) }
 .ach-check { font-size: 14px; color: var(--text2) }
 
-/* Achievement toast — big and satisfying */
+/* Achievement toast - big and satisfying */
 .ach-toast {
   position: fixed; top: 68px; right: 16px;
   background: var(--panel);
@@ -1585,7 +1585,7 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
 /* ── Daily Challenges Panel ──────────────────────────────────────── */
 .challenges-wrap { padding: 20px; border-top: 1px solid var(--border) }
 .challenges-wrap::before {
-  content: '— DAILY CHALLENGES —';
+  content: '- DAILY CHALLENGES -';
   display: block; text-align:center; font-size:10px; font-weight:700; letter-spacing:.15em;
   color:var(--text3); margin-bottom:16px;
 }
@@ -1605,7 +1605,7 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
 .ch-empty       { font-size:12px; color:var(--text3); text-align:center; padding:20px }
 
 /* ══════════════════════════════════════════════════════════════════
-   RESPONSIVE — mobile-first below 860px
+   RESPONSIVE - mobile-first below 860px
    ══════════════════════════════════════════════════════════════════ */
 
 /* Tablet: 2-col rooms, sidebar collapses */
@@ -1643,7 +1643,7 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
   .sb-close-btn { display: flex; }
   .sidebar-backdrop { display: none; }  /* still hidden until .active */
 
-  /* Real backdrop div — can receive click events to close the drawer */
+  /* Real backdrop div - can receive click events to close the drawer */
   .sidebar-backdrop {
     display: none;
     position: fixed;
@@ -1685,7 +1685,7 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
   .room-grid { grid-template-columns: repeat(2, 1fr) }
 }
 
-/* Mobile: single column rooms — make them TALL so all normies show */
+/* Mobile: single column rooms - make them TALL so all normies show */
 @media (max-width: 600px) {
   .room-grid { grid-template-columns: 1fr }
   .notif-stack { right: 8px; bottom: 8px }
@@ -1725,7 +1725,7 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   2026 MODERN OVERHAUL — sleek, monochrome, depth-aware
+   2026 MODERN OVERHAUL - sleek, monochrome, depth-aware
    These rules sit at the end and override legacy where they conflict.
    ══════════════════════════════════════════════════════════════════ */
 
@@ -2184,4 +2184,116 @@ code { font-family: var(--font-mono); background: var(--bg2); padding: 2px 6px; 
   .tab-btn::after { left: 14px; right: 14px }
   .dorm-main { padding: 14px 12px 24px }
   .room-grid { gap: 10px }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   HELP MODAL
+   ══════════════════════════════════════════════════════════════════ */
+.help-overlay {
+  align-items: flex-start;
+  padding: 56px 16px 16px;
+  overflow-y: auto;
+}
+.help-modal {
+  max-width: 680px;
+  width: 100%;
+  margin: 0 auto;
+  text-align: left;
+  padding: 32px 32px 28px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow: 0 24px 80px rgba(0,0,0,.24);
+  position: relative;
+}
+.help-close {
+  position: absolute; top: 16px; right: 16px;
+  width: 32px; height: 32px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text2);
+  cursor: pointer;
+  transition: background .12s ease, color .12s ease;
+}
+.help-close:hover { background: var(--bg3); color: var(--text) }
+.help-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px; font-weight: 800;
+  letter-spacing: .22em;
+  color: var(--text3);
+  margin-bottom: 6px;
+}
+.help-title {
+  font-size: 28px; font-weight: 800;
+  letter-spacing: -.015em;
+  color: var(--text);
+  margin-bottom: 18px;
+}
+.help-section {
+  padding: 14px 0;
+  border-top: 1px solid var(--border);
+}
+.help-section:first-of-type { border-top: none; padding-top: 0 }
+.help-h {
+  font-size: 11px; font-weight: 800; letter-spacing: .16em;
+  color: var(--text2);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+.help-section p {
+  font-size: 14px; line-height: 1.55;
+  color: var(--text2);
+  margin: 0 0 8px;
+}
+.help-list, .help-needs {
+  margin: 4px 0 0; padding: 0;
+  list-style: none;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.help-list li {
+  position: relative;
+  padding: 6px 0 6px 16px;
+  font-size: 13px; line-height: 1.5;
+  color: var(--text2);
+}
+.help-list li::before {
+  content: '';
+  position: absolute; left: 0; top: 14px;
+  width: 6px; height: 1px;
+  background: var(--text3);
+}
+.help-list strong { color: var(--text); font-weight: 700 }
+.help-needs li {
+  display: grid; grid-template-columns: 96px 1fr;
+  gap: 12px;
+  padding: 6px 10px;
+  background: var(--bg2);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--text2);
+}
+.help-needs li span {
+  font-family: var(--font-mono); font-size: 10px;
+  font-weight: 800; letter-spacing: .14em;
+  color: var(--text);
+}
+.help-footer {
+  margin-top: 18px;
+  text-align: center;
+  font-size: 11px; color: var(--text3);
+}
+.help-footer kbd {
+  display: inline-block;
+  padding: 2px 6px;
+  font-family: var(--font-mono); font-size: 10px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text2);
+}
+@media (max-width: 600px) {
+  .help-modal { padding: 24px 18px 20px; border-radius: 14px }
+  .help-title { font-size: 22px }
+  .help-needs li { grid-template-columns: 78px 1fr; padding: 6px 8px }
 }

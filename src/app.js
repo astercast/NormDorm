@@ -1,4 +1,4 @@
-import {
+﻿import {
   DEMO_IDS, TICK_MS, GAME_MINS_PER_TICK,
   ACTIVITY_META, CHAT_LINES, ROOM_CHAT, EVENT_TEMPLATES, ALL_NEEDS,
   UPGRADES, ACHIEVEMENTS, CHALLENGE_POOL,
@@ -30,7 +30,7 @@ import {
   showChatBubble, showCoinPop, updateComboMeter,
   renderShop, renderAchievements,
   showAchievementToast, showOfflineModal,
-  renderHowItWorks,
+  renderHowItWorks, showHelpModal,
   renderLoading, updateLoadProgress,
   renderLeaderboard,
   showDailyModal, renderChallenges,
@@ -250,11 +250,11 @@ export class App {
       try {
         ids = await lookupNormies(address)
       } catch(e) {
-        notify('Could not load wallet — ' + (e.message || 'network error') + '. Try demo mode.', 'error', 7000)
+        notify('Could not load wallet - ' + (e.message || 'network error') + '. Try demo mode.', 'error', 7000)
         this._renderConnect(); return
       }
       if (!ids.length) {
-        notify('No Normies found at that address — loading demo.', 'warn', 5000)
+        notify('No Normies found at that address - loading demo.', 'warn', 5000)
         ids = DEMO_IDS.slice(0, 12)
         this.isDemo = true
       }
@@ -302,7 +302,7 @@ export class App {
     this._initDailySystem()
 
     if (offlineMinutes > 5) showOfflineModal(offlineMinutes, () =>
-      logEvent(`Welcome back — ${offlineMinutes}m elapsed.`)
+      logEvent(`Welcome back - ${offlineMinutes}m elapsed.`)
     )
     this._startLoops()
   }
@@ -341,6 +341,13 @@ export class App {
               <path d="M8 1a7 7 0 1 0 7 7 5.5 5.5 0 0 1-7-7Z" fill="currentColor"/>
             </svg>
           </button>
+          <button class="icon-btn" id="btn-help" title="How NormDorm works" aria-label="Open help">
+            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+              <path d="M8 14.5A6.5 6.5 0 1 0 8 1.5a6.5 6.5 0 0 0 0 13Z" fill="none" stroke="currentColor" stroke-width="1.3"/>
+              <path d="M6.2 6.1a1.9 1.9 0 0 1 3.6.8c0 1-.8 1.4-1.4 1.7-.4.2-.6.4-.6.9v.3" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+              <circle cx="7.8" cy="11.6" r=".85" fill="currentColor"/>
+            </svg>
+          </button>
           <button class="icon-btn" id="btn-leave" title="Leave" aria-label="Leave">
             <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
               <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
@@ -348,7 +355,7 @@ export class App {
           </button>
         </div>
       </div>
-      ${this.isDemo ? '<div class="demo-banner">DEMO MODE — enter an address on the home screen to load your own Normies</div>' : ''}
+      ${this.isDemo ? '<div class="demo-banner">DEMO MODE - enter an address on the home screen to load your own Normies</div>' : ''}
 
       <div class="tab-bar">
         <button class="tab-btn active" data-tab="dorm">DORM</button>
@@ -368,7 +375,7 @@ export class App {
             </div>
             <div class="msb-divider"></div>
             <div class="msb-item">
-              <span class="msb-val" id="msb-income">—</span>
+              <span class="msb-val" id="msb-income">-</span>
               <span class="msb-lbl">/ MIN</span>
             </div>
             <div class="msb-divider"></div>
@@ -414,7 +421,7 @@ export class App {
                 </div>
                 <div class="sb-vital">
                   <div class="sb-vital-lbl">INCOME</div>
-                  <div class="sb-vital-val sb-vital-val-mono" id="stat-income">—</div>
+                  <div class="sb-vital-val sb-vital-val-mono" id="stat-income">-</div>
                   <div class="sb-vital-sub">per minute</div>
                 </div>
               </div>
@@ -422,11 +429,11 @@ export class App {
               <div class="sb-card sb-milestone" id="sb-milestone">
                 <div class="sb-card-title">NEXT MILESTONE</div>
                 <div class="sb-milestone-row">
-                  <span class="sb-milestone-name" id="milestone-name">—</span>
+                  <span class="sb-milestone-name" id="milestone-name">-</span>
                   <span class="sb-milestone-reward" id="milestone-reward"></span>
                 </div>
                 <div class="milestone-bar"><div id="milestone-fill" class="milestone-fill"></div></div>
-                <div class="sb-milestone-progress" id="milestone-progress">—</div>
+                <div class="sb-milestone-progress" id="milestone-progress">-</div>
               </div>
 
               <div class="sb-card sb-quickstats">
@@ -472,6 +479,7 @@ export class App {
     // ── Tab switching ─────────────────────────────────────────────────────────
     this.root.querySelectorAll('.tab-btn').forEach(btn => btn.onclick = () => this._tab(btn.dataset.tab))
     document.getElementById('theme-toggle').onclick = toggleTheme
+    document.getElementById('btn-help').onclick     = () => showHelpModal()
     document.getElementById('btn-leave').onclick    = () => { this._stopAll(); this._renderConnect() }
     document.getElementById('logo-home').onclick    = () => { this._stopAll(); this._renderConnect() }
 
@@ -501,7 +509,7 @@ export class App {
     this._evNormieClick  = e => this._onNormieClick(e.detail.id)
     this._evNormieAction = e => this._onNormieAction(e.detail.action, e.detail.id)
     this._evQuickAction  = e => this._onQuickAction(e.detail.action)
-    this._evNormieDrop   = e => this._onNormieDrop(e.detail.id, e.detail.roomId)
+    this._evNormieDrop   = e => this._onNormieDrop(e.detail.id, e.detail.roomId, e.detail.dropAt)
     document.addEventListener('normie-click',  this._evNormieClick)
     document.addEventListener('normie-action', this._evNormieAction)
     document.addEventListener('quick-action',  this._evQuickAction)
@@ -607,30 +615,38 @@ export class App {
     this._checkAchievements()
   }
 
-  _onNormieDrop(normieId, targetRoomId) {
+  _onNormieDrop(normieId, targetRoomId, dropAt) {
     const normie = this.normies.find(n => n.id === normieId)
-    if (!normie || normie.location === targetRoomId) return
+    if (!normie) return
     const targetSceneEl = this.sceneEls?.[targetRoomId]
     if (!targetSceneEl) return
-    // Capacity check for indoor rooms
+
     if (targetRoomId !== 'outdoor') {
       const targetRoom = this.rooms.find(r => r.id === targetRoomId)
-      const occupants  = this.normies.filter(n => n.location === targetRoomId).length
+      // Only count *other* normies toward capacity so re-placing inside the
+      // same room doesn't ever get rejected.
+      const occupants  = this.normies.filter(n => n.id !== normieId && n.location === targetRoomId).length
       if (targetRoom && occupants >= targetRoom.maxOcc) {
         notify(`${targetRoom.typeName || 'Room'} is full!`, 'warn', 2500)
         return
       }
     }
+
+    const sameRoom = normie.location === targetRoomId
     normie.location = targetRoomId
-    const { activity } = pickActivity(normie.needs, normie.personality, targetRoomId, this.rooms)
-    normie.activity          = activity
-    normie.activityTicksLeft = activityDuration(activity)
-    setSpriteScene(normie, targetSceneEl)
+    if (!sameRoom) {
+      const { activity } = pickActivity(normie.needs, normie.personality, targetRoomId, this.rooms)
+      normie.activity          = activity
+      normie.activityTicksLeft = activityDuration(activity)
+    }
+    setSpriteScene(normie, targetSceneEl, dropAt ? { dropAt } : {})
     updateOccupancy(this.normies, this.rooms)
-    const roomName = targetRoomId === 'outdoor'
-      ? 'the quad'
-      : (this.rooms.find(r => r.id === targetRoomId)?.typeName || targetRoomId)
-    logEvent(`Normie #${normie.id} moved to ${roomName}`)
+    if (!sameRoom) {
+      const roomName = targetRoomId === 'outdoor'
+        ? 'the quad'
+        : (this.rooms.find(r => r.id === targetRoomId)?.typeName || targetRoomId)
+      logEvent(`Normie #${normie.id} moved to ${roomName}`)
+    }
   }
 
   _onQuickAction(action) {
@@ -721,7 +737,7 @@ export class App {
           n._warned = { ...(n._warned || {}), [k]: true }
           logEvent(EVENT_TEMPLATES.critical(n.name, k))
           if (!n._lastCritWarn || this.tickCount - n._lastCritWarn > 90) {
-            notify(`${n.name} — ${k} is critical!`, 'warn')
+            notify(`${n.name} - ${k} is critical!`, 'warn')
             n._lastCritWarn = this.tickCount
           }
           this.coins = Math.max(0, this.coins - COINS_CRITICAL_PENALTY)
@@ -894,7 +910,7 @@ export class App {
         delay += 600  // stagger requests to respect rate limits
       }
     } catch {
-      // Silently ignore — agentic features are additive
+      // Silently ignore - agentic features are additive
     }
   }
 
@@ -906,7 +922,7 @@ export class App {
     const prev   = stored.lastLoginDate
 
     if (prev === today) {
-      // Same day — restore challenges only
+      // Same day - restore challenges only
       this._daily           = stored
       this._challengeProgress = stored.challengeProgress || {}
       renderChallenges(stored.challenges || [], this._challengeProgress)
@@ -1088,7 +1104,7 @@ function _freshNormie(data, personality, idx, rooms) {
   const indoorRooms = rooms.filter(r => r.typeId !== 'outdoor')
   const defRoom     = indoorRooms[idx % Math.max(indoorRooms.length, 1)]?.id
                       || rooms[0]?.id || 'outdoor'
-  // Always start in an indoor room — pick an activity valid there
+  // Always start in an indoor room - pick an activity valid there
   const { activity, location } = pickActivity(freshNeeds(), personality, defRoom, rooms)
   // Guard: if pickActivity still resolves to outdoor, override it
   const startLocation = (location === 'outdoor') ? defRoom : (location || defRoom)

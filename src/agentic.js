@@ -1,4 +1,4 @@
-// ── Agentic Normie System — ERC-8004 ──────────────────────────────────────
+﻿// ── Agentic Normie System - ERC-8004 ──────────────────────────────────────
 //
 // 1.  Batch-check which of the user's Normies are bound as ERC-8004 agents
 // 2.  Fetch their live persona (name, tagline, greeting, quirks, personality)
@@ -102,7 +102,7 @@ const _LINES = {
     outdoor: ["The quad has its own topology.","Interesting data points out here.","Mapping the space."],
   },
   witty: {
-    study:   ["Big brain energy? Don't @ me.","My GPA called — it said it misses me.","Technically learning if you squint."],
+    study:   ["Big brain energy? Don't @ me.","My GPA called - it said it misses me.","Technically learning if you squint."],
     gaming:  ["I play to lose with style.","The only skill issue is everyone else's.","Carrying the team by existing."],
     chill:   ["Professionally doing nothing.","My hobby is not having hobbies.","Peak performance unlocked."],
     gym:     ["Every step is technically cardio.","The mirror and I have an understanding.","Arriving counts, right?"],

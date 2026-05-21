@@ -1,4 +1,4 @@
-export const API_BASE         = 'https://api.normies.art'
+﻿export const API_BASE         = 'https://api.normies.art'
 export const NORMIES_CONTRACT = '0x9Eb6E2025B64f340691e424b7fe7022fFDE12438'
 export const PX_DARK          = '#48494b'
 export const PX_LIGHT         = '#e3e5e4'
@@ -57,7 +57,7 @@ export const ROOM_TYPES = [
   { typeId:'art',     typeName:'Art Studio',   theme:'art',     activities:['sketching','meditating','chatting','reading','dancing','studying','journaling'],               desc:'Easels. Canvas. Creative chaos.'   },
 ]
 
-// Bedroom is ALWAYS added to every dorm — the only place normies can sleep
+// Bedroom is ALWAYS added to every dorm - the only place normies can sleep
 export const BEDROOM_TYPE = {
   typeId:'bedroom', typeName:'Bedroom', theme:'bedroom',
   activities:['sleeping','napping','reading','chatting','studying','gaming','watching','sketching','journaling'],
@@ -71,29 +71,49 @@ export const OUTDOOR_TYPE = {
 }
 
 export function buildRoomList(normieCount) {
-  /** Each room holds up to 12 normies; add a new room every 12 normies (no hard cap on room count). */
-  const CAP = 12
-  const n = Math.max(normieCount, 1)
-  const totalRooms = Math.max(Math.ceil(n / CAP), 3)
-  const rooms = []
+  /**
+   * Room economy that scales cleanly from a few normies to hundreds.
+   *
+   *   - Indoor capacity per room: CAP = 16
+   *   - Bedrooms: one per BEDROOM_RATIO normies (min 1) so sleep slots scale
+   *     with population (a 300-normie wallet still has somewhere to sleep).
+   *   - Other rooms: enough that combined indoor capacity meets the population,
+   *     with every theme represented at least once whenever space allows.
+   */
+  const CAP             = 16
+  const BEDROOM_RATIO   = 30
+  const n               = Math.max(normieCount, 1)
 
-  rooms.push({
-    id:'room-100', number:100, name:'ROOM 100',
-    typeId:BEDROOM_TYPE.typeId, typeName:BEDROOM_TYPE.typeName,
-    theme:BEDROOM_TYPE.theme, activities:[...BEDROOM_TYPE.activities],
-    maxOcc:CAP, desc:BEDROOM_TYPE.desc,
-  })
+  const bedroomCount = Math.max(1, Math.ceil(n / BEDROOM_RATIO))
+  const totalIndoor  = Math.max(
+    bedroomCount + 2,                 // at least one non-bedroom room
+    Math.ceil(n / CAP),
+  )
+  const otherCount   = totalIndoor - bedroomCount
+
+  const rooms = []
+  let num = 100
+
+  for (let i = 0; i < bedroomCount; i++) {
+    rooms.push({
+      id:`room-${num}`, number:num, name:`ROOM ${num}`,
+      typeId:BEDROOM_TYPE.typeId, typeName:BEDROOM_TYPE.typeName,
+      theme:BEDROOM_TYPE.theme, activities:[...BEDROOM_TYPE.activities],
+      maxOcc:CAP, desc:BEDROOM_TYPE.desc,
+    })
+    num++
+  }
 
   const regularTypes = ROOM_TYPES.filter(t => t.typeId !== 'bedroom')
-  for (let i = 0; i < totalRooms - 1; i++) {
+  for (let i = 0; i < otherCount; i++) {
     const type = regularTypes[i % regularTypes.length]
-    const num  = 101 + i
     rooms.push({
       id:`room-${num}`, number:num, name:`ROOM ${num}`,
       typeId:type.typeId, typeName:type.typeName,
       theme:type.theme, activities:[...type.activities],
       maxOcc:CAP, desc:type.desc,
     })
+    num++
   }
 
   rooms.push({
@@ -227,7 +247,7 @@ export const EVENT_TEMPLATES = {
   upgrade:      (name, lvl)     => `Upgraded ${name} to Lv.${lvl}`,
   achieve:      (name)          => `🏆 Achievement: ${name}`,
   satisfied:    (n, k)          => `${n}'s ${k} fully restored!`,
-  critical:     (n, k)          => `⚠️ ${n} — ${k} critically low!`,
+  critical:     (n, k)          => `⚠️ ${n} - ${k} critically low!`,
   sleeping:     (n)             => `${n} went to sleep 💤`,
   gaming:       (n)             => `${n} started gaming 🕹️`,
   studying:     (n)             => `${n} hit the books 📖`,

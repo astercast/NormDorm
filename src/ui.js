@@ -1,4 +1,4 @@
-import {
+﻿import {
   ALL_NEEDS, NEED_LABELS, NEED_ICONS,
   ACTIVITY_META, UPGRADES, ACHIEVEMENTS, API_BASE,
   COINS_FEED_COST, COINS_ENERGY_DRINK_COST, COINS_STUDY_SESSION_COST, COINS_PARTY_COST,
@@ -89,7 +89,7 @@ export function showChatBubble(normieId, text, dur = 3500) {
   b.style.cssText = 'position:absolute;left:0;top:0;transform:translate(-50%,-100%);z-index:60;pointer-events:none'
   wrap.appendChild(b)
 
-  // Position function — runs every frame so the bubble tracks a moving sprite.
+  // Position function - runs every frame so the bubble tracks a moving sprite.
   const position = () => {
     if (!sprite.isConnected) { dismiss(true); return }
     const sr = sprite.getBoundingClientRect()
@@ -181,7 +181,7 @@ export function updateStats(normies, coins, gameMinute, dormHappiness, incomePer
   const xpCurr = document.getElementById('xp-current')
   const xpNext = document.getElementById('xp-next')
   if (xpFill || xpCurr) {
-    // Lazy import to avoid circular dep — getXpForLevel is a pure function
+    // Lazy import to avoid circular dep - getXpForLevel is a pure function
     const xpThis = _getXpForLevel(level)
     const xpNxt  = _getXpForLevel(level + 1)
     const pct    = xpNxt > xpThis ? Math.min(100, ((totalXP - xpThis) / (xpNxt - xpThis)) * 100) : 100
@@ -458,7 +458,7 @@ export function showOfflineModal(mins, cb) {
   overlay.innerHTML=`<div class="modal">
     <div class="modal-icon">👋</div>
     <div class="modal-title">WELCOME BACK</div>
-    <div class="modal-body">Your normies were on their own for <strong>${t}</strong>.<br>Needs have been decaying — time to check on them!</div>
+    <div class="modal-body">Your normies were on their own for <strong>${t}</strong>.<br>Needs have been decaying - time to check on them!</div>
     <button class="btn btn-primary" id="offline-ok">CHECK ON THEM →</button>
   </div>`
   document.body.appendChild(overlay)
@@ -488,7 +488,7 @@ export function showWalletPicker(wallets, onSelect, onCancel) {
       <div class="modal-title">CONNECT WALLET</div>
       <div class="wallet-safety-note">
         <span class="safety-icon">🛡️</span>
-        <span>Read-only — we never request transactions or signatures</span>
+        <span>Read-only - we never request transactions or signatures</span>
       </div>
       <div class="wallet-list">${walletItems}</div>
       <button class="btn btn-ghost" id="wallet-cancel">Cancel</button>
@@ -500,6 +500,94 @@ export function showWalletPicker(wallets, onSelect, onCancel) {
     btn.onclick = ()=>{ overlay.remove(); onSelect(wallets[+btn.dataset.idx]) }
   })
   document.getElementById('wallet-cancel').onclick = ()=>{ overlay.remove(); onCancel?.() }
+}
+
+// ── Help modal ────────────────────────────────────────────────────────────────
+// A compact in-app help sheet covering every system. Shown when the user hits
+// the `?` button next to the theme toggle.
+
+export function showHelpModal() {
+  if (document.getElementById('help-overlay')) return
+  const overlay = document.createElement('div')
+  overlay.id = 'help-overlay'
+  overlay.className = 'modal-overlay help-overlay'
+  overlay.innerHTML = `
+    <div class="modal help-modal">
+      <button class="help-close" id="help-close" aria-label="Close help">
+        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      </button>
+      <div class="help-eyebrow">NORMDORM GUIDE</div>
+      <div class="help-title">How the dorm works</div>
+
+      <div class="help-section">
+        <div class="help-h">The basics</div>
+        <p>NormDorm is an idle life simulator for your Normies. Drop in any wallet to load that wallet's collection, or hit "try the demo" on the home page.</p>
+        <p>Every Normie is a pixel-rendered version of the on-chain art, with personality driven by their traits.</p>
+      </div>
+
+      <div class="help-section">
+        <div class="help-h">Rooms &amp; the quad</div>
+        <p>Each room caps at 16 Normies. The dorm scales automatically: more Normies, more rooms, more bedrooms.</p>
+        <p>The quad is unlimited - drag any Normie out there for fresh air, social and fun gains.</p>
+        <ul class="help-list">
+          <li><strong>Drag &amp; drop</strong> from any room to any other room or the quad. The drop indicator shows where they'll land.</li>
+          <li><strong>Bedrooms</strong> are the only place Normies can sleep. The dorm makes more of them as the population grows.</li>
+        </ul>
+      </div>
+
+      <div class="help-section">
+        <div class="help-h">Needs</div>
+        <ul class="help-needs">
+          <li><span>HUNGER</span> fill by eating or cooking</li>
+          <li><span>ENERGY</span> fill by sleeping or napping (bedrooms only)</li>
+          <li><span>FUN</span> fill by gaming, exercising, or hitting the quad</li>
+          <li><span>SOCIAL</span> fill by chatting or hanging out</li>
+          <li><span>HYGIENE</span> fill by showering</li>
+          <li><span>STUDY</span> fill by studying, reading, coding</li>
+        </ul>
+        <p>Needs decay over time. Normies will switch activities on their own to fill them.</p>
+      </div>
+
+      <div class="help-section">
+        <div class="help-h">Coins &amp; progression</div>
+        <ul class="help-list">
+          <li><strong>Click a Normie</strong> for an instant coin pop. Chain clicks to build a combo multiplier up to ×8.</li>
+          <li><strong>Passive income</strong> ticks in the background while you watch the dorm live.</li>
+          <li><strong>Need satisfied</strong> bonus when any need crosses 90%.</li>
+          <li><strong>Activity switches</strong> pay a small bonus each time a Normie picks a new task.</li>
+          <li><strong>Level up</strong> by earning lifetime coins. Higher levels = stronger income and combo bonuses.</li>
+        </ul>
+      </div>
+
+      <div class="help-section">
+        <div class="help-h">Daily streak &amp; challenges</div>
+        <p>Log in every day to keep your streak alive. The streak chip in the header turns warm, hot, and gold as you build it up.</p>
+        <p>Three daily challenges roll over every 24h. Complete them for big coin bonuses.</p>
+      </div>
+
+      <div class="help-section">
+        <div class="help-h">Shop &amp; upgrades</div>
+        <p>Spend coins in the <strong>SHOP</strong> tab. Upgrades stack permanently for that wallet: faster passive income, stronger click rewards, slower need decay, and more.</p>
+      </div>
+
+      <div class="help-section">
+        <div class="help-h">Tips</div>
+        <ul class="help-list">
+          <li>Drag Normies into the room that matches their needs - they'll start doing the right activity automatically.</li>
+          <li>Click fast to chain combos. Each multiplier tier pays exponentially better.</li>
+          <li>Achievements pay coin bonuses, check the CHALLENGES tab.</li>
+          <li>The dorm saves automatically when you leave; needs decay slightly while you're away but you'll catch some offline income.</li>
+        </ul>
+      </div>
+
+      <div class="help-footer">Press <kbd>ESC</kbd> to close</div>
+    </div>`
+  document.body.appendChild(overlay)
+  const close = () => overlay.remove()
+  document.getElementById('help-close').onclick = close
+  overlay.addEventListener('click', e => { if (e.target === overlay) close() })
+  const onKey = e => { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', onKey) } }
+  document.addEventListener('keydown', onKey)
 }
 
 // ── How It Works page ─────────────────────────────────────────────────────────
@@ -517,8 +605,8 @@ export function renderHowItWorks(root) {
         <section class="hiw-section">
           <div class="hiw-section-icon">🏠</div>
           <h2>What is NormDorm?</h2>
-          <p>NormDorm is an idle life simulator for <a href="https://normies.art" target="_blank">Normies NFTs</a> — a 10,000-piece generative pixel art collection on Ethereum.</p>
-          <p>Enter your Ethereum address to load your Normies into a pixel dorm. They live their own lives — sleeping, gaming, studying, chatting — while you earn coins, upgrade the dorm, and keep them happy.</p>
+          <p>NormDorm is an idle life simulator for <a href="https://normies.art" target="_blank">Normies NFTs</a> - a 10,000-piece generative pixel art collection on Ethereum.</p>
+          <p>Enter your Ethereum address to load your Normies into a pixel dorm. They live their own lives - sleeping, gaming, studying, chatting - while you earn coins, upgrade the dorm, and keep them happy.</p>
           <p>No wallet connection required. No fees, no transactions. Just vibes.</p>
         </section>
 
@@ -563,32 +651,32 @@ export function renderHowItWorks(root) {
 
           <h3>Your Normies have 6 needs:</h3>
           <div class="hiw-needs">
-            <div class="hiw-need">🍜 <strong>Hunger</strong> — fill by eating or cooking</div>
-            <div class="hiw-need">⚡ <strong>Energy</strong> — fill by sleeping or napping</div>
-            <div class="hiw-need">🎮 <strong>Fun</strong> — fill by gaming, exercising, or going outside</div>
-            <div class="hiw-need">💬 <strong>Social</strong> — fill by chatting or hanging in the quad</div>
-            <div class="hiw-need">🚿 <strong>Hygiene</strong> — fill by showering</div>
-            <div class="hiw-need">📖 <strong>Study</strong> — fill by studying or reading</div>
+            <div class="hiw-need">🍜 <strong>Hunger</strong> - fill by eating or cooking</div>
+            <div class="hiw-need">⚡ <strong>Energy</strong> - fill by sleeping or napping</div>
+            <div class="hiw-need">🎮 <strong>Fun</strong> - fill by gaming, exercising, or going outside</div>
+            <div class="hiw-need">💬 <strong>Social</strong> - fill by chatting or hanging in the quad</div>
+            <div class="hiw-need">🚿 <strong>Hygiene</strong> - fill by showering</div>
+            <div class="hiw-need">📖 <strong>Study</strong> - fill by studying or reading</div>
           </div>
-          <p>Needs decay over time automatically. Your normies pick activities on their own to fill them — but you can intervene with coins.</p>
+          <p>Needs decay over time automatically. Your normies pick activities on their own to fill them - but you can intervene with coins.</p>
         </section>
 
         <section class="hiw-section">
           <div class="hiw-section-icon">💰</div>
           <h2>Earning coins</h2>
           <div class="hiw-coins-list">
-            <div class="hc-item"><span class="hc-icon">👆</span><div><strong>Click normies</strong> — instant coin pop. Build a click combo for multiplied rewards!</div></div>
-            <div class="hc-item"><span class="hc-icon">⏱️</span><div><strong>Passive income</strong> — every tick your normies passively earn coins just by being here</div></div>
-            <div class="hc-item"><span class="hc-icon">✨</span><div><strong>Need satisfaction</strong> — when a need hits 90+, you get a coin bonus</div></div>
-            <div class="hc-item"><span class="hc-icon">🔄</span><div><strong>Activity switches</strong> — small bonus every time a normie changes what they're doing</div></div>
-            <div class="hc-item"><span class="hc-icon">🏆</span><div><strong>Achievements</strong> — unlock rewards by hitting milestones</div></div>
+            <div class="hc-item"><span class="hc-icon">👆</span><div><strong>Click normies</strong> - instant coin pop. Build a click combo for multiplied rewards!</div></div>
+            <div class="hc-item"><span class="hc-icon">⏱️</span><div><strong>Passive income</strong> - every tick your normies passively earn coins just by being here</div></div>
+            <div class="hc-item"><span class="hc-icon">✨</span><div><strong>Need satisfaction</strong> - when a need hits 90+, you get a coin bonus</div></div>
+            <div class="hc-item"><span class="hc-icon">🔄</span><div><strong>Activity switches</strong> - small bonus every time a normie changes what they're doing</div></div>
+            <div class="hc-item"><span class="hc-icon">🏆</span><div><strong>Achievements</strong> - unlock rewards by hitting milestones</div></div>
           </div>
         </section>
 
         <section class="hiw-section">
           <div class="hiw-section-icon">🛒</div>
           <h2>Spending coins</h2>
-          <p>Use the <strong>Shop tab</strong> to buy upgrades that improve your dorm permanently — better food, faster WiFi, cozy beds, gaming setups, and more.</p>
+          <p>Use the <strong>Shop tab</strong> to buy upgrades that improve your dorm permanently - better food, faster WiFi, cozy beds, gaming setups, and more.</p>
           <p>You can also spend coins on <strong>Quick Actions</strong> (throw a quad party, run a study session) or <strong>direct interventions</strong> (feed a specific normie, give them an energy drink).</p>
         </section>
 
@@ -596,12 +684,12 @@ export function renderHowItWorks(root) {
           <div class="hiw-section-icon">💡</div>
           <h2>Tips</h2>
           <div class="hiw-tips">
-            <div class="hiw-tip-item">🖱️ <strong>Click fast</strong> on normies to build a combo multiplier — your coins multiply up to ×8!</div>
-            <div class="hiw-tip-item">💤 <strong>Check back often</strong> — needs decay while you're away, but NormDorm does offline catchup when you return</div>
-            <div class="hiw-tip-item">📶 <strong>Invest in WiFi early</strong> — passive income upgrades compound over time</div>
-            <div class="hiw-tip-item">😊 <strong>Happy normies earn more</strong> — keep average dorm happiness above 85% for the Peak Dorm achievement</div>
-            <div class="hiw-tip-item">🎯 <strong>Traits matter</strong> — your normie's on-chain traits affect their personality and which activities they prefer</div>
-            <div class="hiw-tip-item">🏆 <strong>Achievements pay</strong> — every achievement unlocked gives you a coin bonus</div>
+            <div class="hiw-tip-item">🖱️ <strong>Click fast</strong> on normies to build a combo multiplier - your coins multiply up to ×8!</div>
+            <div class="hiw-tip-item">💤 <strong>Check back often</strong> - needs decay while you're away, but NormDorm does offline catchup when you return</div>
+            <div class="hiw-tip-item">📶 <strong>Invest in WiFi early</strong> - passive income upgrades compound over time</div>
+            <div class="hiw-tip-item">😊 <strong>Happy normies earn more</strong> - keep average dorm happiness above 85% for the Peak Dorm achievement</div>
+            <div class="hiw-tip-item">🎯 <strong>Traits matter</strong> - your normie's on-chain traits affect their personality and which activities they prefer</div>
+            <div class="hiw-tip-item">🏆 <strong>Achievements pay</strong> - every achievement unlocked gives you a coin bonus</div>
           </div>
         </section>
 
@@ -672,8 +760,8 @@ export async function renderLeaderboard(currentAddress, isDemo) {
         <div>
           <div class="lb-title">LEADERBOARD</div>
           <div class="lb-mode">${isGlobal
-            ? '🌐 Global rankings — live data'
-            : '📱 Device rankings — <a href="https://supabase.com" target="_blank">connect Supabase</a> for global'
+            ? '🌐 Global rankings - live data'
+            : '📱 Device rankings - <a href="https://supabase.com" target="_blank">connect Supabase</a> for global'
           }</div>
         </div>
         <button class="btn btn-sm btn-ghost" id="lb-refresh-btn">↻ Refresh</button>
@@ -687,7 +775,7 @@ export async function renderLeaderboard(currentAddress, isDemo) {
         </div>` : ''}
 
       ${entries.length === 0
-        ? `<div class="lb-empty">No scores yet — play to appear here!</div>`
+        ? `<div class="lb-empty">No scores yet - play to appear here!</div>`
         : `<div class="lb-list">
             <div class="lb-row lb-row-header">
               <div class="lb-col-rank">RANK</div>

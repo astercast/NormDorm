@@ -13,11 +13,11 @@ const ROOM_H = ROOM_TILES_H * TS   // 224px
 const WALL_H = TS * 2              // 64px
 
 const NORMIE_SCALE         = 2.0          // indoor room sprite scale
-const OUTDOOR_NORMIE_SCALE = 2.0          // match indoor — sprites are the hero outside too
+const OUTDOOR_NORMIE_SCALE = 2.0          // match indoor - sprites are the hero outside too
 const SPRITE_W_PCT  = (SPRITE_W * NORMIE_SCALE) / ROOM_W * 100
 
-// Outdoor scene layout — keep in sync with .out-ground in style.css
-const OUTDOOR_GROUND_PX = 78              // taller ground band — gives sprites room to breathe
+// Outdoor scene layout - keep in sync with .out-ground in style.css
+const OUTDOOR_GROUND_PX = 78              // taller ground band - gives sprites room to breathe
 const OUT_FOOT_OFFSET   = (SPRITE_H - SPRITE_FEET_Y) * OUTDOOR_NORMIE_SCALE
 // Sprite `bottom` CSS so feet land exactly on the horizon line
 const OUTDOOR_FEET_Y    = OUTDOOR_GROUND_PX - OUT_FOOT_OFFSET
@@ -918,6 +918,7 @@ const sceneCanvases = new Map()
 // ── Build dorm (3-col grid + outdoor spanning full width) ──────────────────
 export async function buildDorm(rooms) {
   sceneCanvases.clear()
+  _lastNightBucket = -1
 
   const wrap = document.createElement('div')
   wrap.className = 'dorm-building'
@@ -927,7 +928,11 @@ export async function buildDorm(rooms) {
 
   const sceneEls = {}
 
+  let roomIdx = 0
   for (const room of rooms) {
+    // Yield to the event loop every few rooms so very large dorms (300+ normies,
+    // 20+ rooms) don't freeze the UI thread during initial render.
+    if (roomIdx++ % 6 === 5) await new Promise(r => setTimeout(r, 0))
     if (room.typeId === 'outdoor') continue
 
     const roomWrap = document.createElement('div')
@@ -999,7 +1004,7 @@ function _roomIcon(typeId) {
 //
 // Layout (heights):
 //   sky      → full
-//   horizon  → @ bottom: 64px  (the FLOOR top — sprites land here)
+//   horizon  → @ bottom: 64px  (the FLOOR top - sprites land here)
 //   ground   → bottom 64px tall
 //
 // Props are positioned via `left: %` so the scene reflows responsively.
@@ -1031,14 +1036,14 @@ function _buildOutdoorDOM(room) {
   const moon = document.createElement('div')
   moon.className = 'out-moon'; moon.id = 'moon'
   sky.appendChild(moon)
-  // Stars — denser, only visible at night
+  // Stars - denser, only visible at night
   for (let i = 0; i < 36; i++) {
     const s = document.createElement('div')
     s.className = 'out-star'
     s.style.cssText = `left:${Math.random()*100}%;top:${(2 + Math.random() * 55).toFixed(1)}%;animation-delay:${(Math.random()*4).toFixed(1)}s`
     sky.appendChild(s)
   }
-  // Far skyline (deepest depth) — broader silhouette of campus buildings
+  // Far skyline (deepest depth) - broader silhouette of campus buildings
   const skyline = document.createElement('div')
   skyline.className = 'out-skyline'
   ;[34,52,28,64,40,22,58,36,48,26,44,30,56,38,50].forEach(h => {
@@ -1059,7 +1064,7 @@ function _buildOutdoorDOM(room) {
   sky.appendChild(trees)
   scene.appendChild(sky)
 
-  // Ground — soft gradient + subtle path
+  // Ground - soft gradient + subtle path
   const ground = document.createElement('div')
   ground.className = 'out-ground'; ground.id = 'outdoor-ground'
   scene.appendChild(ground)
@@ -1069,7 +1074,7 @@ function _buildOutdoorDOM(room) {
   horizon.className = 'out-horizon'
   scene.appendChild(horizon)
 
-  // Foreground props — trees, benches, lamps. Behind sprites via z-index in CSS.
+  // Foreground props - trees, benches, lamps. Behind sprites via z-index in CSS.
   const props = document.createElement('div')
   props.className = 'out-props'
   ;[
@@ -1083,7 +1088,7 @@ function _buildOutdoorDOM(room) {
   ].forEach(el => props.appendChild(el))
   scene.appendChild(props)
 
-  // Sprite layer — sits above props so normies always read on top
+  // Sprite layer - sits above props so normies always read on top
   const objs = document.createElement('div')
   objs.className = 'out-objects'; scene.appendChild(objs)
 
@@ -1206,8 +1211,46 @@ function _endDrag(e) {
     _lastDragId = normieId
     clearTimeout(_dragBlockTimer)
     _dragBlockTimer = setTimeout(() => { _lastDragId = null }, 100)
-    document.dispatchEvent(new CustomEvent('normie-drop', { detail: { id: normieId, roomId } }))
+
+    // Compute drop position relative to the target room/quad so the normie
+    // lands where the cursor actually is, not at a random spot.
+    const dropAt = _dropCoordsForRoom(roomId, e.clientX, e.clientY)
+    document.dispatchEvent(new CustomEvent('normie-drop', {
+      detail: { id: normieId, roomId, dropAt },
+    }))
   }
+}
+
+/**
+ * Translate viewport-space (clientX, clientY) into the coordinate space the
+ * sprite engine uses for that room:
+ *   - indoor: { x: %, y: %, isOutdoor:false }   (x along width, y as `bottom` %)
+ *   - outdoor: { x: %, y: px, isOutdoor:true }  (x along width, y as `bottom` px)
+ * Clamped to a reasonable walkable band so the sprite never lands inside walls.
+ */
+function _dropCoordsForRoom(roomId, clientX, clientY) {
+  const wrap = document.getElementById('roomwrap-' + roomId)
+  if (!wrap) return null
+  const isOutdoor = wrap.classList.contains('outdoor-wrap')
+  const stage = isOutdoor
+    ? wrap.querySelector('.outdoor-scene')
+    : wrap.querySelector('.room-scene')
+  if (!stage) return null
+  const r = stage.getBoundingClientRect()
+  if (!r.width || !r.height) return null
+
+  const xPct = ((clientX - r.left) / r.width) * 100
+  if (isOutdoor) {
+    // Outdoor sprites always sit on the horizon line.
+    const xClamped = Math.max(4, Math.min(96, xPct))
+    return { x: xClamped, y: OUTDOOR_FEET_Y, isOutdoor: true }
+  }
+  // Indoor: y is measured from the bottom of the room as a percentage.
+  const yPct = ((r.bottom - clientY) / r.height) * 100
+  const xClamped = Math.max(4, Math.min(100 - SPRITE_W_PCT - 4, xPct))
+  // Keep sprites on the floor band (roughly 4%..26% from the bottom).
+  const yClamped = Math.max(4, Math.min(26, yPct))
+  return { x: xClamped, y: yClamped, isOutdoor: false }
 }
 
 // ── Sprite system ──────────────────────────────────────────────────────────
@@ -1257,12 +1300,16 @@ export function placeSprite(normie, sceneEl) {
     _lastDraw: 0,
     _moveTimer: 1 + Math.random() * 2,
     _atSpot: false,
+    _pinned: false,
+    _lastCssX: -999, _lastCssY: -999, _lastCssZ: -999,
   }
   spriteState.set(normie.id, ss)
 
   if (!isOutdoor && !WALK_ACTS.has(normie.activity)) {
     const spot = _getSpot(normie, ss)
-    if (spot) { ss.targetX = spot.x; ss.targetY = spot.y }
+    if (spot) { ss.targetX = _spreadX(ss, spot.x, false); ss.targetY = spot.y }
+  } else if (!isOutdoor) {
+    ss.targetX = _spreadX(ss, startX, false)
   }
 
   _redrawSprite(normie, ss)
@@ -1290,13 +1337,14 @@ export function onActivityChanged(normie) {
   if (!ss) return
   ss._atSpot = false
   ss._moveTimer = 0
+  ss._pinned = false
   if (!ss.isOutdoor && !WALK_ACTS.has(normie.activity)) {
     const spot = _getSpot(normie, ss)
-    if (spot) { ss.targetX = spot.x; ss.targetY = spot.y }
+    if (spot) { ss.targetX = _spreadX(ss, spot.x, false); ss.targetY = spot.y }
   }
 }
 
-export function setSpriteScene(normie, newSceneEl) {
+export function setSpriteScene(normie, newSceneEl, opts = {}) {
   const ss = spriteState.get(normie.id)
   if (!ss || !newSceneEl) return
   ss.cvs.remove()
@@ -1305,8 +1353,8 @@ export function setSpriteScene(normie, newSceneEl) {
   ss.scale     = ss.isOutdoor ? OUTDOOR_NORMIE_SCALE : NORMIE_SCALE
   ss._atSpot   = false
   ss._moveTimer = 0
+  ss._pinned    = !!opts.dropAt
 
-  // Resize the canvas to match the new scale
   ss.cvs.width  = Math.round(SPRITE_W * ss.scale)
   ss.cvs.height = Math.round(SPRITE_H * ss.scale)
 
@@ -1315,25 +1363,42 @@ export function setSpriteScene(normie, newSceneEl) {
     : newSceneEl.querySelector('.room-sprite-layer') || newSceneEl.querySelector('.room-scene') || newSceneEl
 
   if (ss.isOutdoor) {
-    ss.x = Math.random() < 0.5 ? -8 : 105
-    ss.y = OUTDOOR_FEET_Y
-    ss.targetX = 10 + Math.random() * 80
-    ss.targetY = OUTDOOR_FEET_Y
+    if (opts.dropAt) {
+      // Land where the user dropped, then resume free walking from there.
+      ss.x = opts.dropAt.x
+      ss.y = OUTDOOR_FEET_Y
+      ss.targetX = opts.dropAt.x
+      ss.targetY = OUTDOOR_FEET_Y
+      ss._moveTimer = 3 + Math.random() * 4
+    } else {
+      ss.x = Math.random() < 0.5 ? -8 : 105
+      ss.y = OUTDOOR_FEET_Y
+      ss.targetX = _spreadX(ss, 10 + Math.random() * 80, true)
+      ss.targetY = OUTDOOR_FEET_Y
+    }
     ss.cvs.style.left   = ss.x.toFixed(1) + '%'
     ss.cvs.style.bottom = ss.y.toFixed(1) + 'px'
     ss.cvs.style.top    = 'auto'
     ss.cvs.style.width  = ''
     ss.cvs.style.height = ''
   } else {
-    ss.x = Math.random() < 0.5 ? -20 : 90
-    ss.y = 6 + Math.random() * 6
-    if (!WALK_ACTS.has(normie.activity)) {
-      const spot = _getSpot(normie, ss)
-      if (spot) { ss.targetX = spot.x; ss.targetY = spot.y }
-      else      { ss.targetX = 4 + Math.random() * (88 - SPRITE_W_PCT); ss.targetY = 6 }
+    if (opts.dropAt) {
+      ss.x = opts.dropAt.x
+      ss.y = opts.dropAt.y
+      ss.targetX = opts.dropAt.x
+      ss.targetY = opts.dropAt.y
+      ss._moveTimer = 3 + Math.random() * 4
     } else {
-      ss.targetX = 4 + Math.random() * (88 - SPRITE_W_PCT)
-      ss.targetY = 4 + Math.random() * 8
+      ss.x = Math.random() < 0.5 ? -20 : 90
+      ss.y = 6 + Math.random() * 6
+      if (!WALK_ACTS.has(normie.activity)) {
+        const spot = _getSpot(normie, ss)
+        if (spot) { ss.targetX = _spreadX(ss, spot.x, false); ss.targetY = spot.y }
+        else      { ss.targetX = _spreadX(ss, 4 + Math.random() * (88 - SPRITE_W_PCT), false); ss.targetY = 6 }
+      } else {
+        ss.targetX = _spreadX(ss, 4 + Math.random() * (88 - SPRITE_W_PCT), false)
+        ss.targetY = 4 + Math.random() * 8
+      }
     }
     ss.cvs.style.left   = ss.x + '%'
     ss.cvs.style.bottom = ss.y + '%'
@@ -1345,7 +1410,41 @@ export function setSpriteScene(normie, newSceneEl) {
   container.appendChild(ss.cvs)
 }
 
+/**
+ * Nudge a candidate x-position away from other sprites already standing in
+ * the same scene. Keeps an `EPS` percent buffer so normies don't pile on top
+ * of each other. Falls back to the original if it can't find space after a
+ * few tries (very crowded rooms).
+ */
+function _spreadX(ss, candidateX, isOutdoor) {
+  const EPS = isOutdoor ? 6 : 9   // % horizontal buffer between sprites
+  const minX = 4
+  const maxX = isOutdoor ? 96 : (100 - SPRITE_W_PCT - 4)
+  let x = Math.max(minX, Math.min(maxX, candidateX))
+  for (let attempt = 0; attempt < 8; attempt++) {
+    let conflict = false
+    for (const other of spriteState.values()) {
+      if (other === ss) continue
+      if (other.sceneEl !== ss.sceneEl) continue
+      if (Math.abs(other.targetX - x) < EPS) { conflict = true; break }
+    }
+    if (!conflict) return x
+    // Step sideways alternating left/right
+    const step = (attempt + 1) * EPS * 0.9
+    const dir  = attempt % 2 === 0 ? 1 : -1
+    x = Math.max(minX, Math.min(maxX, candidateX + dir * step))
+  }
+  return x
+}
+
 export function animateSprites(normieMap, nightAlpha, dt) {
+  // Throttle the redraw cadence as the sprite count climbs. With hundreds of
+  // normies the per-frame paint cost dominates; this keeps the page from
+  // freezing without hurting the look of small/medium dorms.
+  const total = spriteState.size
+  const redrawInterval = total > 200 ? 180 : total > 100 ? 120 : total > 50 ? 90 : 66
+  const now = performance.now()
+
   for (const [id, ss] of spriteState) {
     const normie = normieMap.get(id)
     if (!normie) continue
@@ -1363,25 +1462,25 @@ export function animateSprites(normieMap, nightAlpha, dt) {
 
       if (isWalk) {
         ss.walkPhase = (ss.walkPhase + dt * (3.6 + Math.min(preDist * 0.08, 2.5))) % 1
-        if (ss._moveTimer <= 0) {
+        if (ss._moveTimer <= 0 && !ss._pinned) {
           if (ss.isOutdoor) {
-            ss.targetX = 4   + Math.random() * 92
+            ss.targetX = _spreadX(ss, 4   + Math.random() * 92, true)
             ss.targetY = OUTDOOR_FEET_Y
           } else {
-            ss.targetX = 6   + Math.random() * (82 - SPRITE_W_PCT)
+            ss.targetX = _spreadX(ss, 6   + Math.random() * (82 - SPRITE_W_PCT), false)
             ss.targetY = 4.5 + Math.random() * 8.5
           }
           ss._moveTimer = 4 + Math.random() * 5
         }
       } else if (!ss.isOutdoor) {
-        if (!ss._atSpot) {
+        if (!ss._atSpot && !ss._pinned) {
           const spot = _getSpot(normie, ss)
-          if (spot) { ss.targetX = spot.x; ss.targetY = spot.y }
+          if (spot) { ss.targetX = _spreadX(ss, spot.x, false); ss.targetY = spot.y }
         }
       } else {
-        // Outdoor non-walk (meditating, reading, etc.): occasional re-position along horizon
-        if (ss._moveTimer <= 0) {
-          ss.targetX = 6   + Math.random() * 88
+        // Outdoor non-walk: occasional re-position along the horizon line.
+        if (ss._moveTimer <= 0 && !ss._pinned) {
+          ss.targetX = _spreadX(ss, 6   + Math.random() * 88, true)
           ss.targetY = OUTDOOR_FEET_Y
           ss._moveTimer = 10 + Math.random() * 15
         }
@@ -1391,7 +1490,6 @@ export function animateSprites(normieMap, nightAlpha, dt) {
       ss._atSpot = true
     }
 
-    // ── Movement ────────────────────────────────────────────────────────────
     const dx   = ss.targetX - ss.x
     const dy   = ss.targetY - ss.y
     const dist = Math.hypot(dx, dy)
@@ -1410,29 +1508,36 @@ export function animateSprites(normieMap, nightAlpha, dt) {
       ss.y = ss.targetY
       ss._atSpot  = true
       ss.walkPhase = 0
+      // Drop pin once the sprite has reached its anchor point.
+      ss._pinned   = false
     } else if (!isSleep && isWalk && dist <= near) {
       ss.x = ss.targetX
       ss.y = ss.targetY
+      ss._pinned = false
     }
 
-    // ── CSS position ────────────────────────────────────────────────────────
+    // Only write CSS when the displayed value actually changes. With many
+    // sprites this shaves a lot of layout work.
+    const writeStyle = ss.cvs.style
     if (ss.isOutdoor) {
-      ss.cvs.style.left   = ss.x.toFixed(2) + '%'
-      ss.cvs.style.bottom = Math.round(ss.y) + 'px'
-      /* depth: further right + lower px bottom → slightly higher z */
-      ss.cvs.style.zIndex = String(24 + Math.floor(ss.x * 0.35) + Math.floor((OUTDOOR_FEET_Y - ss.y) * 0.15))
+      const cssX = ss.x.toFixed(2)
+      const cssY = Math.round(ss.y)
+      const cssZ = 24 + Math.floor(ss.x * 0.35) + Math.floor((OUTDOOR_FEET_Y - ss.y) * 0.15)
+      if (cssX !== ss._lastCssX)  { writeStyle.left   = cssX + '%';  ss._lastCssX = cssX }
+      if (cssY !== ss._lastCssY)  { writeStyle.bottom = cssY + 'px'; ss._lastCssY = cssY }
+      if (cssZ !== ss._lastCssZ)  { writeStyle.zIndex = String(cssZ); ss._lastCssZ = cssZ }
     } else {
-      ss.cvs.style.left   = ss.x.toFixed(2) + '%'
-      ss.cvs.style.bottom = ss.y.toFixed(2) + '%'
-      /* Deeper into room (higher bottom %) → lower z; front of room → higher z (still under .room-canvas-front) */
-      const z = 8 + Math.round((26 - ss.y) * 3.2)
-      ss.cvs.style.zIndex = String(Math.max(2, Math.min(88, z)))
+      const cssX = ss.x.toFixed(2)
+      const cssY = ss.y.toFixed(2)
+      const z    = Math.max(2, Math.min(88, 8 + Math.round((26 - ss.y) * 3.2)))
+      if (cssX !== ss._lastCssX) { writeStyle.left   = cssX + '%'; ss._lastCssX = cssX }
+      if (cssY !== ss._lastCssY) { writeStyle.bottom = cssY + '%'; ss._lastCssY = cssY }
+      if (z    !== ss._lastCssZ) { writeStyle.zIndex = String(z);  ss._lastCssZ = z    }
     }
 
     if (pose === 'sleep') ss.zzzPhase = ((ss.zzzPhase || 0) + dt * 1.4) % (Math.PI * 8)
 
-    const now = performance.now()
-    if (now - ss._lastDraw > 66) {
+    if (now - ss._lastDraw > redrawInterval) {
       const spriteNight = ss.isOutdoor ? nightAlpha : nightAlpha * 0.15
       _redrawSprite(normie, ss, spriteNight)
       ss._lastDraw = now
@@ -1464,6 +1569,7 @@ function _redrawSprite(normie, ss, nightAlpha = 0) {
 }
 
 // ── Night overlay on room canvases ─────────────────────────────────────────
+let _lastNightBucket = -1
 export function updateDayNight(gameMinute) {
   const hour  = (gameMinute / 60) % 24
   let night = 0
@@ -1471,14 +1577,21 @@ export function updateDayNight(gameMinute) {
   else if (hour < 6)     night = 1
   else if (hour < 8)     night = Math.max(1 - (hour - 6) / 2, 0)
 
-  for (const [, { canvasBack, ctxBack, ctxFront, canvasFront, room }] of sceneCanvases) {
-    _drawRoomLayers(ctxBack, ctxFront, room)
-    if (night > 0) {
-      const dim = `rgba(0, 0, 0, ${(night * 0.12).toFixed(3)})`
-      ctxBack.fillStyle  = dim
-      ctxBack.fillRect(0, 0, canvasBack.width, canvasBack.height)
-      ctxFront.fillStyle = dim
-      ctxFront.fillRect(0, 0, canvasFront.width, canvasFront.height)
+  // Only redraw room canvases when the night intensity has actually shifted.
+  // Otherwise we burn cycles repainting ~30 detailed rooms every second on
+  // big wallets, which is the main source of UI freezes.
+  const bucket = Math.round(night * 20)
+  if (bucket !== _lastNightBucket) {
+    _lastNightBucket = bucket
+    for (const [, { canvasBack, ctxBack, ctxFront, canvasFront, room }] of sceneCanvases) {
+      _drawRoomLayers(ctxBack, ctxFront, room)
+      if (night > 0) {
+        const dim = `rgba(0, 0, 0, ${(night * 0.12).toFixed(3)})`
+        ctxBack.fillStyle  = dim
+        ctxBack.fillRect(0, 0, canvasBack.width, canvasBack.height)
+        ctxFront.fillStyle = dim
+        ctxFront.fillRect(0, 0, canvasFront.width, canvasFront.height)
+      }
     }
   }
 

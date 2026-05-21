@@ -1,4 +1,4 @@
-// ── NormDorm Leaderboard ───────────────────────────────────────────────────
+﻿// ── NormDorm Leaderboard ───────────────────────────────────────────────────
 //
 // Calls the Vercel serverless function at /api/leaderboard (Upstash KV).
 // Falls back to localStorage when the API is unavailable (dev / offline).
@@ -46,7 +46,7 @@ export async function submitScore({ address, coins, normieCount, happiness }) {
       body:    JSON.stringify(entry),
       signal:  AbortSignal.timeout(5000),
     })
-  } catch { /* silent — local save already succeeded */ }
+  } catch { /* silent - local save already succeeded */ }
 }
 
 export async function fetchLeaderboard() {

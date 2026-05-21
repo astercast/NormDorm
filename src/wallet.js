@@ -1,4 +1,4 @@
-import { NORMIES_CONTRACT, API_BASE } from './constants.js'
+﻿import { NORMIES_CONTRACT, API_BASE } from './constants.js'
 
 const PUBLIC_RPC = 'https://eth.llamarpc.com'
 const NORMIES_FROM_BLOCK = '0xCE4D00'   // contract deployment block
@@ -21,11 +21,11 @@ async function _rpc(method, params, timeoutMs = 15000) {
   }
 }
 
-// ── Address lookup — no wallet needed, no cap ──────────────────────────────
+// ── Address lookup - no wallet needed, no cap ──────────────────────────────
 // Returns every Normie ID the address owns (no artificial limit).
 // Strategy order (mirrors NormiesArchive):
-//  1. api.normies.art  /holders/:address  — fastest, always accurate
-//  2. eth_getLogs from deployment block   — pure on-chain fallback
+//  1. api.normies.art  /holders/:address  - fastest, always accurate
+//  2. eth_getLogs from deployment block   - pure on-chain fallback
 export async function lookupNormies(address) {
   const addr = address.toLowerCase()
 
@@ -41,7 +41,7 @@ export async function lookupNormies(address) {
                  : null
       if (ids?.length) {
         return ids.map(Number).filter(n => Number.isFinite(n) && n >= 0 && n <= 9999)
-                  .sort((a, b) => a - b)   // no slice — return all of them
+                  .sort((a, b) => a - b)   // no slice - return all of them
       }
     }
   } catch { /* fall through */ }
@@ -59,7 +59,7 @@ export async function lookupNormies(address) {
   for (const log of toLogs)   owned.add(BigInt(log.topics[3]).toString())
   for (const log of fromLogs) owned.delete(BigInt(log.topics[3]).toString())
 
-  return [...owned].map(Number).sort((a, b) => a - b)  // no slice — return all
+  return [...owned].map(Number).sort((a, b) => a - b)  // no slice - return all
 }
 
 // ── Normie metadata from normies.art API ───────────────────────────────────

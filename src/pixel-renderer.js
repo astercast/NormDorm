@@ -1,4 +1,4 @@
-// Full-body normie sprites — API overlay + procedural fallback
+﻿// Full-body normie sprites - API overlay + procedural fallback
 const FULLNORM = 'https://fullnormies.vercel.app/api/v1'
 
 const metaCache  = new Map()   // id → meta object
@@ -38,7 +38,7 @@ export async function preloadNormieImage(id) {
 // ── Per-frame image loader ─────────────────────────────────────────────────
 // Tries to load with CORS so we can chromakey the light-gray background to
 // transparent. If CORS fails (server doesn't send Access-Control-Allow-Origin),
-// retries WITHOUT crossOrigin and caches the raw image — sprite will still
+// retries WITHOUT crossOrigin and caches the raw image - sprite will still
 // render (with the original light-gray rectangle baked in by the API).
 // Only falls back to procedural if both attempts fail.
 function _loadFrame(id, pose, frame) {
@@ -59,7 +59,7 @@ function _loadFrame(id, pose, frame) {
         frameCache.set(key, canvas)
         resolve(canvas)
       } catch {
-        // Tainted (rare) — fall through to raw load
+        // Tainted (rare) - fall through to raw load
         _loadRaw(url, key, resolve)
       }
     }
@@ -68,7 +68,7 @@ function _loadFrame(id, pose, frame) {
   })
 }
 
-// Raw load — no CORS, can be drawn but not read. The canvas will be tainted
+// Raw load - no CORS, can be drawn but not read. The canvas will be tainted
 // if we tried to call getImageData, but drawImage works fine for display.
 function _loadRaw(url, key, resolve) {
   const img = new Image()
@@ -185,8 +185,8 @@ function _proceduralNormie(ctx, id, pose, walkPhase) {
     rAs  = [0,-3,0, 3][p]   // right arm swing
   }
 
-  // Layout — feet land at row ~76 to match SPRITE_FEET_Y / API anchor
-  const HX = Math.round((40 - 10) / 2)   // 15 — head left x
+  // Layout - feet land at row ~76 to match SPRITE_FEET_Y / API anchor
+  const HX = Math.round((40 - 10) / 2)   // 15 - head left x
   const HY = 8 + bob                      // head top y (shifted down)
   const BX = Math.round((40 - bodyW) / 2) // body left x
   const BY = HY + 14                      // body top y
